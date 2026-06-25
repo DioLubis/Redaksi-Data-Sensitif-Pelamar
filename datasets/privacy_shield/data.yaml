@@ -1,0 +1,18 @@
+path: datasets/privacy_shield
+train: images/train
+val: images/val
+test: images/test
+
+nc: 10
+names:
+  0: face_photo
+  1: signature
+  2: qr_code
+  3: barcode
+  4: id_card
+  5: stamp_or_seal
+  6: document_number_area
+  7: contact_block_visual
+  8: address_block_visual
+  9: sensitive_visual_region
+

@@ -119,3 +119,6 @@ Kelas lain dapat menjadi tahap lanjutan.
 3. Hugging Face Resume Dataset Example: <https://huggingface.co/datasets/opensporks/resumes>
 4. Kaggle Resume Dataset Example: <https://www.kaggle.com/datasets/snehaanbhawal/resume-dataset>
 
+## Implementasi Tahap 2
+
+Strategi operasional dataset, struktur folder final YOLO, pedoman labeling per kelas, aturan split, augmentasi, dan script preparation dijelaskan di [Dataset Strategy and Preparation](09-dataset-strategy.md).

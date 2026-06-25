@@ -1,0 +1,64 @@
+sources:
+  wider_face:
+    purpose:
+      - face_photo
+      - personal_photo_as_face_photo_when_used_inside_documents
+    official_url: https://shuoyang1213.me/WIDERFACE/
+    notes: "Face detection benchmark. Use only face boxes relevant to document/photo redaction experiments."
+    expected_raw_dir: datasets/raw/wider_face
+    conversion: scripts/dataset/convert_widerface_to_yolo.py
+
+  doclaynet:
+    purpose:
+      - contact_block_visual
+      - address_block_visual
+      - sensitive_visual_region
+      - document_layout_context
+    official_url: https://github.com/DS4SD/DocLayNet
+    huggingface_url: https://huggingface.co/datasets/docling-project/DocLayNet
+    notes: "COCO-style document layout dataset. Requires class remapping and/or extra sensitive-region annotation."
+    expected_raw_dir: datasets/raw/doclaynet
+    conversion: scripts/dataset/convert_annotations_to_yolo.py
+
+  funsd:
+    purpose:
+      - form_layout
+      - ocr_validation
+      - contact_block_visual_candidate_regions
+      - address_block_visual_candidate_regions
+    official_url: https://guillaumejaume.github.io/FUNSD/
+    notes: "Small scanned form dataset. Useful for OCR/layout validation; not all labels directly map to sensitive visual classes."
+    expected_raw_dir: datasets/raw/funsd
+    conversion: manual_review_or_custom_mapping
+
+  midv500:
+    purpose:
+      - id_card
+      - document_number_area
+      - sensitive_visual_region
+    project_url: https://github.com/fcakyon/midv500
+    notes: "Identity document dataset tooling. Prefer public/dummy documents and convert annotations through COCO when available."
+    expected_raw_dir: datasets/raw/midv500
+    conversion: scripts/dataset/convert_annotations_to_yolo.py
+
+  optional_resume_datasets:
+    purpose:
+      - cv
+      - application_document
+      - contact_block_visual
+      - address_block_visual
+    example_urls:
+      - https://huggingface.co/datasets/opensporks/resumes
+      - https://www.kaggle.com/datasets/snehaanbhawal/resume-dataset
+    notes: "Use only after license review. Do not send raw resumes to Gemini or external APIs."
+
+split_policy:
+  train: 0.70
+  val: 0.20
+  test: 0.10
+  group_by:
+    - source_dataset
+    - document_id
+    - template_id
+  leakage_rule: "Pages from the same document/template must stay in one split."
+

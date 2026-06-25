@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Local dataset payloads
+datasets/raw/
+datasets/interim/
+datasets/privacy_shield/images/**
+datasets/privacy_shield/labels/**
+!datasets/privacy_shield/images/
+!datasets/privacy_shield/images/train/
+!datasets/privacy_shield/images/val/
+!datasets/privacy_shield/images/test/
+!datasets/privacy_shield/images/train/.gitkeep
+!datasets/privacy_shield/images/val/.gitkeep
+!datasets/privacy_shield/images/test/.gitkeep
+!datasets/privacy_shield/labels/
+!datasets/privacy_shield/labels/train/
+!datasets/privacy_shield/labels/val/
+!datasets/privacy_shield/labels/test/
+!datasets/privacy_shield/labels/train/.gitkeep
+!datasets/privacy_shield/labels/val/.gitkeep
+!datasets/privacy_shield/labels/test/.gitkeep
+
+# Runtime reports and generated visualizations
+reports/
+
+# Model artifacts
+runs/
+weights/
+*.pt
+*.onnx

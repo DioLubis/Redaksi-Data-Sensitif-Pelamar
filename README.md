@@ -131,6 +131,8 @@ flowchart TD
 | [Dataset Plan](docs/06-dataset-plan.md) | Rencana dataset open source, anotasi, dan batasan etis |
 | [Risk Mitigation](docs/07-risk-mitigation.md) | Risiko teknis, privasi, penelitian, dan mitigasi |
 | [Acceptance Criteria](docs/08-acceptance-criteria.md) | Kriteria penerimaan per modul |
+| [Dataset Strategy and Preparation](docs/09-dataset-strategy.md) | Strategi dataset, labeling, split, augmentasi, dan script preparation |
+| [Manual Dataset Installation](docs/10-manual-dataset-installation.md) | Panduan instalasi manual WIDER FACE, MIDV-500, DocLayNet, FUNSD, dan dataset CV |
 
 ## Stack Prototype yang Disarankan
 
@@ -161,6 +163,18 @@ Kandidat awal dataset:
 
 Detail ada di [Dataset Plan](docs/06-dataset-plan.md).
 
+Dataset final untuk training YOLO berada di:
+
+```text
+datasets/privacy_shield
+```
+
+Konfigurasi YOLO:
+
+```text
+datasets/privacy_shield/data.yaml
+```
+
 ## Output Utama Sistem
 
 1. `sanitized_document`: dokumen hasil redaksi permanen.
@@ -182,4 +196,3 @@ YOLO26 sudah memiliki dokumentasi publik dari Ultralytics. Namun implementasi te
 4. FUNSD Dataset: <https://guillaumejaume.github.io/FUNSD/>
 5. RVL-CDIP Dataset: <https://adamharley.com/rvl-cdip/>
 6. Hugging Face Resume Dataset Example: <https://huggingface.co/datasets/opensporks/resumes>
-
