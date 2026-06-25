@@ -1,201 +1,185 @@
-Ringkasan Sistem
-Sistem yang akan dibuat adalah privacy gateway untuk Karierly sebelum modul AI Screening berjalan. Sistem ini menerima CV atau dokumen pendukung pelamar, mendeteksi bagian visual dan teks yang berpotensi sensitif, melakukan redaksi otomatis, lalu hanya mengirim data yang sudah disanitasi ke Gemini API.
-YOLOv5 dan YOLO26 digunakan hanya untuk deteksi area visual sensitif, bukan untuk membaca isi CV. Untuk isi teks, sistem menggunakan OCR, regex, dan/atau NER. Hasil akhirnya adalah dokumen/redaksi aman, sanitized candidate profile, Privacy Risk Report, Redaction Report, serta metrik evaluasi perbandingan model.
-Problem Statement
-CV pelamar dapat berisi data pribadi seperti foto wajah, tanda tangan, QR code, alamat, nomor telepon, email pribadi, NIK, tanggal lahir, atau identitas lain. Jika file mentah langsung dikirim ke Gemini API, data tersebut ikut diproses oleh layanan AI eksternal, padahal tidak semuanya relevan untuk penilaian pekerjaan.
-Masalah utama sistem ini adalah bagaimana mendeteksi, menyensor, dan memisahkan data sensitif dari informasi yang relevan untuk screening pekerjaan sebelum data masuk ke Gemini.
-Tujuan Sistem
-Mendeteksi area visual sensitif pada CV dan dokumen pendukung.
-Membandingkan performa YOLOv5 dan YOLO26 secara adil.
-Melakukan redaksi otomatis pada area visual dan teks sensitif.
-Menghasilkan sanitized candidate profile untuk AI Screening.
-Mencegah data pribadi tidak relevan dikirim ke Gemini.
-Menyediakan laporan risiko privasi dan laporan redaksi.
-Menyediakan metrik evaluasi deteksi, redaksi, dan perlindungan data.
-Menjaga eksperimen tetap reproducible dengan dataset sintetis/dummy.
-Daftar Modul
-Document Ingestion Module
-Menerima file CV/dokumen pendukung, misalnya PDF, JPG, PNG, atau hasil konversi halaman dokumen.
+# Applicant Privacy Shield
 
-Document Preprocessing Module
-Mengubah PDF menjadi image per halaman, melakukan normalisasi ukuran, resolusi, orientasi, dan metadata dokumen.
+Judul penelitian:
 
-Visual Sensitive Object Detection Module
-Menjalankan YOLOv5 dan YOLO26 melalui adapter yang seragam untuk mendeteksi objek visual sensitif seperti foto wajah, tanda tangan, QR code, barcode, ID card, stempel, dan elemen identitas visual lain.
+**Perbandingan YOLOv5 dan YOLO26 pada Sistem Deteksi dan Redaksi Data Visual Sensitif Pelamar Sebelum Pemrosesan AI Screening pada Applicant Tracking System Karierly**
 
-OCR Module
-Mengekstrak teks dari dokumen hasil preprocessing untuk dianalisis lebih lanjut.
+Applicant Privacy Shield adalah prototype penelitian mandiri untuk menjadi privacy gateway sebelum modul AI Screening pada Applicant Tracking System Karierly. Sistem ini dirancang agar CV atau dokumen pendukung pelamar tidak langsung dikirim ke Gemini API dalam bentuk mentah.
 
-Text Sensitive Data Detection Module
-Menggunakan regex dan/atau NER untuk mendeteksi email pribadi, nomor telepon, NIK, alamat lengkap, tanggal lahir, nama keluarga, URL personal, nomor rekening, dan data sensitif lain.
+Pipeline sistem melakukan validasi dokumen, konversi PDF ke gambar, deteksi area visual sensitif menggunakan YOLOv5 dan YOLO26, OCR, deteksi PII berbasis regex/NER, redaksi otomatis, pembuatan sanitized candidate profile, pembuatan safe prompt, serta pelaporan risiko privasi.
 
-Redaction Engine
-Melakukan masking, blurring, black-box redaction, atau removal terhadap area sensitif visual dan teks.
+## Status Proyek
 
-Sanitized Candidate Profile Builder
-Menghasilkan data kandidat yang hanya berisi informasi relevan seperti pengalaman kerja, pendidikan, skill, sertifikasi, proyek, bahasa, dan ringkasan profesional.
+Tahap saat ini: **desain dan dokumentasi kebutuhan**.
 
-Safe Prompt Builder for Gemini
-Menyusun prompt Gemini hanya dari sanitized profile, bukan dari file mentah.
+Belum ada implementasi kode produksi pada tahap ini. Dokumentasi ini menjadi dasar untuk tahap implementasi prototype.
 
-Privacy Risk Report Module
-Menampilkan jenis data sensitif yang ditemukan, tingkat risiko, lokasi halaman, confidence, dan status redaksi.
+## Tujuan Utama
 
-Redaction Report Module
-   Mencatat area mana yang disensor, metode redaksi, model yang mendeteksi, confidence score, dan status akhir.
+1. Mendeteksi area visual sensitif pada CV atau dokumen pendukung pelamar.
+2. Membandingkan performa YOLOv5 dan YOLO26 untuk deteksi area visual sensitif.
+3. Melakukan redaksi otomatis pada data visual dan tekstual sensitif.
+4. Menghasilkan sanitized document dan sanitized candidate profile.
+5. Memastikan Gemini API hanya menerima data yang relevan untuk screening pekerjaan.
+6. Menyediakan Privacy Risk Report, Redaction Report, audit trail, dan metrik evaluasi.
 
-Model Evaluation Module
-   Mengukur performa YOLOv5 vs YOLO26 menggunakan mAP, precision, recall, F1-score, latency, model size, inference speed, dan false negative rate pada data sensitif.
+## Prinsip Desain
 
-Audit & Reproducibility Module
-   Menyimpan konfigurasi eksperimen, seed, versi model, dataset manifest, parameter training, dan hasil evaluasi.
+1. **No raw CV to Gemini**: file asli tidak boleh dikirim ke Gemini.
+2. **YOLO only detects visual regions**: YOLO tidak dipakai untuk membaca isi CV.
+3. **Hybrid privacy detection**: deteksi visual memakai YOLO, deteksi teks memakai OCR + regex/NER.
+4. **Privacy-first redaction**: false negative pada data sensitif lebih berbahaya daripada false positive.
+5. **Reproducible experiment**: dataset, split, seed, versi model, dan metrik harus terdokumentasi.
+6. **Prototype-first**: sistem realistis untuk skripsi dan dapat dijalankan lokal.
 
-Aktor Sistem
-Pelamar
-Mengunggah CV atau dokumen lamaran melalui career page.
+## MVP Scope
 
-Recruiter
-Melihat kandidat, hasil AI Screening, laporan redaksi, dan laporan risiko privasi.
+Fitur wajib MVP:
 
-Admin
-Mengelola konfigurasi sistem, kebijakan redaksi, dataset evaluasi, dan akses laporan.
+1. Upload CV atau dokumen pendukung.
+2. Validasi tipe file, ukuran file, dan jumlah halaman.
+3. Konversi PDF menjadi gambar per halaman.
+4. Deteksi visual sensitif memakai YOLOv5 dan YOLO26 melalui adapter yang sama.
+5. OCR dokumen.
+6. Deteksi PII tekstual dengan regex/NER.
+7. Penggabungan hasil deteksi visual dan tekstual.
+8. Redaksi area sensitif.
+9. Pembuatan sanitized document.
+10. Pembuatan sanitized candidate profile.
+11. Safe prompt builder untuk Gemini.
+12. Privacy Risk Report dan Redaction Report.
+13. Audit trail tanpa menyimpan PII mentah di log.
+14. Evaluasi kuantitatif YOLOv5 vs YOLO26.
 
-AI Screening Service
-Modul Karierly yang menerima sanitized candidate profile untuk dianalisis oleh Gemini.
+Fitur opsional:
 
-Privacy Gateway Service
-Sistem baru yang berada di antara upload dokumen dan AI Screening.
+1. Blind screening nama kandidat.
+2. Manual review queue untuk dokumen risiko tinggi.
+3. Role-based masking lanjutan.
+4. Dashboard metrik eksperimen.
+5. Active learning untuk memperbaiki anotasi.
 
-Gemini API
-Layanan eksternal yang hanya menerima data hasil sanitasi, bukan file CV mentah.
+## Kelas Deteksi Visual
 
-Data Sensitif yang Harus Dilindungi
-Foto wajah pelamar.
-Tanda tangan.
-QR code.
-Barcode.
-KTP, SIM, paspor, kartu mahasiswa, atau ID card lain.
-NIK atau nomor identitas nasional.
-Alamat lengkap.
-Nomor telepon pribadi.
-Email pribadi jika tidak diperlukan untuk scoring.
-Tanggal lahir.
-Tempat lahir.
-Status pernikahan.
-Agama.
-Jenis kelamin jika tidak relevan dengan pekerjaan.
-Nomor rekening.
-NPWP.
-Link personal yang tidak relevan.
-Foto dokumen sertifikat yang memuat nomor identitas.
-Metadata file yang dapat mengandung nama asli, lokasi, atau informasi perangkat.
-Informasi keluarga atau kontak darurat.
-Arsitektur Sistem
-High-level architecture:
-Career Page / Upload CV
-        |
-        v
-Document Ingestion Service
-        |
-        v
-Document Preprocessing
-(PDF to image, page normalization, metadata stripping)
-        |
-        +-----------------------------+
-        |                             |
-        v                             v
-YOLO Visual Detection             OCR Extraction
-(YOLOv5 / YOLO26 Adapter)          |
-        |                           v
-        |                    Regex / NER Sensitive Text Detection
-        |                             |
-        +-------------+---------------+
-                      |
-                      v
-              Redaction Engine
-                      |
-          +-----------+------------+
-          |                        |
-          v                        v
-Sanitized Document          Sanitized Candidate Profile
-          |                        |
-          v                        v
-Redaction Report       Safe Prompt Builder
-Privacy Risk Report            |
-                               v
-                         Gemini API
-                               |
-                               v
-                     Karierly AI Screening Result
-                     
-Arsitektur ini memisahkan tiga hal penting:
-Deteksi visual oleh YOLO.
-Deteksi teks sensitif oleh OCR + regex/NER.
-Prompt aman ke Gemini tanpa file mentah.
-Data Flow
-Pelamar mengunggah CV atau dokumen pendukung.
-Sistem menyimpan file mentah sementara di area terbatas.
-Dokumen diproses menjadi halaman image jika formatnya PDF.
-Metadata file dibersihkan atau diabaikan dari pipeline AI.
-YOLOv5 mendeteksi area visual sensitif.
-YOLO26 mendeteksi area visual sensitif melalui adapter yang sama.
-OCR mengekstrak teks dari dokumen.
-Regex/NER mendeteksi teks sensitif.
-Sistem menggabungkan hasil deteksi visual dan teks.
-Redaction Engine menyensor area sensitif.
-Sistem membuat sanitized document.
-Sistem membuat sanitized candidate profile.
-Safe Prompt Builder menyusun prompt Gemini dari data yang sudah disaring.
-Gemini menerima hanya data relevan untuk penilaian pekerjaan.
-Hasil Gemini dikembalikan ke modul AI Screening Karierly.
-Recruiter/admin dapat melihat Redaction Report dan Privacy Risk Report.
-Metrik evaluasi model dan perlindungan data disimpan untuk eksperimen.
-Risiko dan Mitigasi
-YOLO gagal mendeteksi data sensitif visual
-Mitigasi: gunakan confidence threshold konservatif, ensemble rule dari YOLO + OCR, dan prioritaskan recall untuk kelas sensitif.
+Kelas utama:
 
-OCR salah membaca teks sensitif
-Mitigasi: gunakan kombinasi OCR, regex multi-format, kamus pola Indonesia, dan NER; tambahkan fallback manual review untuk risiko tinggi.
+1. `face_photo`
+2. `personal_photo`
+3. `signature`
+4. `qr_code`
+5. `barcode`
+6. `id_card`
+7. `stamp_or_seal`
+8. `document_number_area`
+9. `sensitive_visual_region`
+10. `contact_block_visual`
+11. `address_block_visual`
 
-False negative pada data sensitif lebih berbahaya daripada false positive
-Mitigasi: gunakan kebijakan privacy-first, yaitu lebih baik menyensor area yang meragukan daripada membiarkan data sensitif lolos.
+## Kelas Deteksi Tekstual
 
-YOLO26 belum tersedia atau belum jelas package resminya
-Mitigasi: jangan mengarang implementasi. Pada tahap implementasi nanti, package/dokumentasi YOLO26 harus diverifikasi. Sistem dibuat dengan model adapter agar YOLOv5 dan YOLO26 memakai interface, dataset, metrik, dan pipeline evaluasi yang sama.
+Kelas utama:
 
-Perbandingan YOLOv5 vs YOLO26 tidak adil
-Mitigasi: gunakan dataset yang sama, split yang sama, seed yang sama, kelas yang sama, augmentation yang terdokumentasi, hardware yang dicatat, dan metrik yang konsisten.
+1. `candidate_name`
+2. `email`
+3. `phone_number`
+4. `full_address`
+5. `nik`
+6. `npwp`
+7. `birth_date`
+8. `bank_account_number`
+9. `certificate_number`
+10. `irrelevant_personal_link`
+11. `marital_status`
+12. `religion`
+13. `gender`
+14. `family_data`
 
-Data dummy tidak realistis
-Mitigasi: buat dataset sintetis yang menyerupai struktur CV nyata tanpa memakai data pribadi asli.
+## Arsitektur Ringkas
 
-Sanitized profile kehilangan informasi penting untuk screening
-Mitigasi: pisahkan data relevan dan data sensitif dengan policy yang jelas. Skill, pengalaman, pendidikan, proyek, sertifikasi, dan riwayat kerja tetap dipertahankan.
+```mermaid
+flowchart TD
+    A[Candidate Upload] --> B[Upload Protection Layer]
+    B --> C[(Secure Original Storage)]
+    B --> D[Privacy Scan Job]
+    D --> E[PDF/Image Preprocessor]
+    E --> F[YOLO Detector Adapter]
+    F --> F1[YOLOv5]
+    F --> F2[YOLO26]
+    E --> G[OCR Engine]
+    G --> H[Regex/NER PII Detector]
+    F --> I[Detection Merger]
+    H --> I
+    I --> J[Redaction Engine]
+    J --> K[Sanitized Document]
+    G --> L[Sanitized Profile Builder]
+    L --> M[Gemini Safe Prompt Builder]
+    M --> N[Gemini API]
+    I --> O[Privacy Report Generator]
+    D --> P[Audit Trail Service]
+```
 
-Prompt Gemini masih mengandung data sensitif
-Mitigasi: lakukan final prompt inspection menggunakan regex/NER ulang sebelum request dikirim ke Gemini.
+## Struktur Dokumentasi
 
-Redaksi hanya visual, tetapi teks masih tersimpan di layer PDF
-Mitigasi: flatten hasil redaksi menjadi image/PDF baru dan pastikan teks sensitif tidak tersisa sebagai selectable text.
+| Dokumen | Isi |
+|---|---|
+| [Project Overview](docs/00-project-overview.md) | Ringkasan sistem, ruang lingkup, aktor, dan batasan |
+| [PRD](docs/01-prd.md) | Product Requirement Document untuk prototype penelitian |
+| [SRS dan Arsitektur](docs/02-srs-architecture.md) | Software Requirement Specification, diagram, dan desain modul |
+| [API Contract](docs/03-api-contract.md) | Endpoint, payload request, response, dan error format |
+| [Database Design](docs/04-database-design.md) | Rancangan tabel PostgreSQL dan relasi |
+| [Experiment Plan](docs/05-experiment-plan.md) | Desain eksperimen YOLOv5 vs YOLO26 |
+| [Dataset Plan](docs/06-dataset-plan.md) | Rencana dataset open source, anotasi, dan batasan etis |
+| [Risk Mitigation](docs/07-risk-mitigation.md) | Risiko teknis, privasi, penelitian, dan mitigasi |
+| [Acceptance Criteria](docs/08-acceptance-criteria.md) | Kriteria penerimaan per modul |
 
-Audit sulit direproduksi
-   Mitigasi: simpan manifest dataset, config training, versi dependency, model checkpoint, hash file, seed, dan laporan eksperimen.
+## Stack Prototype yang Disarankan
 
-Deliverables
-Dokumen desain sistem dan arsitektur.
-Struktur folder proyek setelah desain disetujui.
-Dataset sintetis/dummy untuk CV dan dokumen pendukung.
-Skema anotasi data sensitif visual.
-Adapter model YOLOv5 dan YOLO26.
-Pipeline training dan evaluasi YOLOv5.
-Pipeline training dan evaluasi YOLO26, jika package/dokumentasi tersedia.
-OCR + regex/NER sensitive text detector.
-Redaction Engine untuk visual dan teks.
-Safe Prompt Builder untuk Gemini.
-Sanitized Candidate Profile schema.
-Privacy Risk Report.
-Redaction Report.
-Model Evaluation Report.
-Privacy Protection Metrics Report.
-Reproducibility package berisi config, seed, manifest, dan command eksperimen.
-Dokumentasi integrasi konseptual dengan Karierly AI Screening.
+| Layer | Teknologi |
+|---|---|
+| Backend API | Go Echo atau Python FastAPI untuk prototype cepat |
+| Worker | Python worker dengan Redis queue |
+| Database | PostgreSQL |
+| Queue | Redis |
+| Object storage lokal | filesystem terstruktur atau MinIO lokal |
+| CV model | YOLOv5 dan YOLO26 |
+| OCR | Tesseract, PaddleOCR, atau EasyOCR |
+| PII text detection | regex, Presidio, spaCy/Stanza/custom NER |
+| Redaction | OpenCV, PyMuPDF, Pillow |
+| Frontend dashboard | ReactJS |
+| AI provider | Gemini API, hanya dengan sanitized candidate profile |
+
+## Dataset Policy
+
+Dataset yang digunakan harus open source, mudah diakses, gratis, dan tidak dikumpulkan sendiri dari data pribadi nyata. Karena penelitian ini menyentuh CV dan PII, setiap dataset wajib diperiksa lisensi dan risiko privasinya sebelum dipakai.
+
+Kandidat awal dataset:
+
+1. Resume/CV dataset dari Kaggle atau Hugging Face untuk dokumen resume.
+2. FUNSD untuk OCR, layout, dan form understanding.
+3. RVL-CDIP untuk variasi dokumen image berskala besar.
+4. Dataset QR/barcode/signature/face open source hanya jika lisensinya sesuai.
+
+Detail ada di [Dataset Plan](docs/06-dataset-plan.md).
+
+## Output Utama Sistem
+
+1. `sanitized_document`: dokumen hasil redaksi permanen.
+2. `sanitized_candidate_profile`: JSON berisi skill, pengalaman, pendidikan, proyek, sertifikasi, dan ringkasan non-sensitif.
+3. `privacy_risk_report`: laporan jenis data sensitif, severity, confidence, dan status redaksi.
+4. `redaction_report`: laporan lokasi redaksi, metode redaksi, dan model/alat pendeteksi.
+5. `model_evaluation_report`: perbandingan YOLOv5 dan YOLO26.
+6. `privacy_protection_metrics`: metrik keberhasilan perlindungan data.
+
+## Catatan YOLO26
+
+YOLO26 sudah memiliki dokumentasi publik dari Ultralytics. Namun implementasi tetap harus diverifikasi saat tahap coding dengan package dan model weight yang tersedia di environment. Jika YOLO26 tidak dapat dijalankan secara lokal, adapter tetap disiapkan dan status eksperimen dicatat sebagai backend unavailable, bukan diganti dengan implementasi palsu.
+
+## Referensi Awal
+
+1. Ultralytics YOLO26 Documentation: <https://docs.ultralytics.com/models/yolo26>
+2. Ultralytics Object Detection Task: <https://docs.ultralytics.com/tasks/detect>
+3. Microsoft Presidio Image Redactor: <https://microsoft.github.io/presidio/image-redactor/>
+4. FUNSD Dataset: <https://guillaumejaume.github.io/FUNSD/>
+5. RVL-CDIP Dataset: <https://adamharley.com/rvl-cdip/>
+6. Hugging Face Resume Dataset Example: <https://huggingface.co/datasets/opensporks/resumes>
+
