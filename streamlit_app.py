@@ -43,12 +43,18 @@ def show_evaluation() -> None:
     st.subheader("Evaluasi Model")
     if comparison.is_file():
         frame = pd.read_csv(comparison)
-        st.dataframe(frame, use_container_width=True, hide_index=True)
+        st.dataframe(frame, width="stretch", hide_index=True)
         chart = reports / "comparison_metrics.png"
         if chart.is_file():
             st.image(str(chart), caption="Perbandingan precision, recall, F1, mAP@50, dan mAP@50:95")
     else:
-        st.info("Hasil evaluasi belum tersedia. Jalankan training, evaluasi, benchmark, lalu generate_comparison_report.py.")
+        quick_reports = sorted((ROOT / "artifacts").glob("trained_*/quick_evaluation.json"))
+        if quick_reports:
+            report = json.loads(quick_reports[-1].read_text(encoding="utf-8"))
+            st.warning("Menampilkan evaluasi CPU cepat. Ini hanya verifikasi sistem, bukan hasil perbandingan penelitian final.")
+            st.dataframe(pd.DataFrame([report]), width="stretch", hide_index=True)
+        else:
+            st.info("Hasil evaluasi belum tersedia. Jalankan training, evaluasi, benchmark, lalu generate_comparison_report.py.")
 
 
 def show_result(result: dict, output_dir: Path) -> None:

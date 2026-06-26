@@ -45,6 +45,12 @@ def test_pii_detection_never_exposes_value() -> None:
     assert "example" not in json.dumps(detections[0].to_dict())
 
 
+def test_pii_detection_handles_email_split_by_ocr() -> None:
+    ocr = PageOCR(1, [token("demo.user@example.", 10, 10, 1), token("invalid", 65, 10, 1)])
+    detections = detect_pii(ocr)
+    assert [item.category for item in detections] == ["email"]
+
+
 def test_box_merger_applies_margin_and_merges_overlap() -> None:
     left = Detection(1, "signature", "visual", 0.9, Box(10, 10, 50, 50))
     right = Detection(1, "email", "ocr_regex", 0.99, Box(35, 10, 70, 50))

@@ -88,6 +88,8 @@ pip install -r requirements-training.txt
 Untuk PDF, `PyMuPDF` sudah dicantumkan pada requirements. Untuk OCR, instal Tesseract binary secara terpisah dan pastikan tersedia pada `PATH`:
 
 ```powershell
+winget install --id UB-Mannheim.TesseractOCR --exact --silent `
+  --accept-package-agreements --accept-source-agreements
 tesseract --version
 ```
 
@@ -134,6 +136,8 @@ python scripts/experiment/generate_comparison_report.py
 ```
 
 Output eksperimen tersimpan di `experiments/runs` dan `experiments/reports`: weights terbaik, confusion matrix, PR curve, JSON metrics, CSV, dan grafik perbandingan. Gunakan precision, recall, F1, mAP@50, mAP@50:95, latency, FPS, ukuran model, waktu training, serta peak GPU memory bila tersedia.
+
+Untuk memverifikasi pipeline pada CPU tanpa melatih seluruh dataset, buat subset seimbang lokal dengan `python scripts/experiment/create_quick_subset.py`. Eksperimen CPU dua epoch hanya untuk smoke test sistem; jangan gunakan metriknya sebagai hasil akhir penelitian.
 
 ## 7. Privacy Pipeline CLI
 

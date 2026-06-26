@@ -25,15 +25,16 @@ def _line_boxes(ocr: PageOCR) -> dict[tuple[int, int, int], tuple[str, Box]]:
 def detect_pii(ocr: PageOCR) -> list[Detection]:
     detections: list[Detection] = []
     for text, box in _line_boxes(ocr).values():
+        normalized_text = re.sub(r"\s*([@.])\s*", r"\1", text)
         category = None
         severity = "high"
-        if EMAIL.search(text):
+        if EMAIL.search(normalized_text):
             category = "email"
-        elif PHONE.search(text):
+        elif PHONE.search(normalized_text):
             category = "phone_number"
-        elif ID_NUMBER.search(text):
+        elif ID_NUMBER.search(normalized_text):
             category, severity = "document_number", "critical"
-        elif ADDRESS_HINT.search(text):
+        elif ADDRESS_HINT.search(normalized_text):
             category = "address"
         if category:
             evidence_hash = __import__("hashlib").sha256(text.encode("utf-8")).hexdigest()[:16]

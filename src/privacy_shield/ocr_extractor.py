@@ -15,6 +15,9 @@ class TesseractOCRExtractor:
             from PIL import Image
         except ImportError as exc:
             raise RuntimeError("pytesseract and Pillow are required for OCR.") from exc
+        default_windows_binary = Path("C:/Program Files/Tesseract-OCR/tesseract.exe")
+        if not Path(pytesseract.pytesseract.tesseract_cmd).is_file() and default_windows_binary.is_file():
+            pytesseract.pytesseract.tesseract_cmd = str(default_windows_binary)
         try:
             data = pytesseract.image_to_data(Image.open(image_path), lang=self.language, output_type=pytesseract.Output.DICT)
         except pytesseract.TesseractNotFoundError as exc:
