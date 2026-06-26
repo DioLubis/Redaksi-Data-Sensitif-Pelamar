@@ -5,6 +5,7 @@ __pycache__/
 # Local dataset payloads
 datasets/raw/
 datasets/interim/
+datasets/instalasi_manual/
 datasets/privacy_shield/images/**
 datasets/privacy_shield/labels/**
 !datasets/privacy_shield/images/

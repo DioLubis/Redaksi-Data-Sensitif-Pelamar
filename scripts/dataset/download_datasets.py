@@ -54,8 +54,74 @@ def download_doclaynet(output_dir: Path, split: str, limit: int | None) -> None:
         if "original_path" in locals():
             sys.path = original_path
 
+    doclaynet_features = hf_datasets.Features(
+        {
+            "image_id": hf_datasets.Value("int64"),
+            "image": hf_datasets.Image(),
+            "width": hf_datasets.Value("int32"),
+            "height": hf_datasets.Value("int32"),
+            "doc_category": hf_datasets.Value("string"),
+            "collection": hf_datasets.Value("string"),
+            "doc_name": hf_datasets.Value("string"),
+            "page_no": hf_datasets.Value("int64"),
+            "objects": [
+                {
+                    "category_id": hf_datasets.ClassLabel(
+                        names=[
+                            "Caption",
+                            "Footnote",
+                            "Formula",
+                            "List-item",
+                            "Page-footer",
+                            "Page-header",
+                            "Picture",
+                            "Section-header",
+                            "Table",
+                            "Text",
+                            "Title",
+                        ]
+                    ),
+                    "image_id": hf_datasets.Value("string"),
+                    "id": hf_datasets.Value("int64"),
+                    "area": hf_datasets.Value("float64"),
+                    "bbox": hf_datasets.Sequence(hf_datasets.Value("float32"), length=4),
+                    "segmentation": [[hf_datasets.Value("float32")]],
+                    "iscrowd": hf_datasets.Value("bool"),
+                    "precedence": hf_datasets.Value("int32"),
+                }
+            ],
+        }
+    )
+
     output_dir.mkdir(parents=True, exist_ok=True)
-    dataset = load_dataset("docling-project/DocLayNet", split=split, streaming=limit is not None)
+    try:
+        dataset = load_dataset(
+            "docling-project/DocLayNet",
+            split=split,
+            streaming=limit is not None,
+            trust_remote_code=True,
+            features=doclaynet_features,
+        )
+    except TypeError:
+        dataset = load_dataset(
+            "docling-project/DocLayNet",
+            split=split,
+            streaming=limit is not None,
+            features=doclaynet_features,
+        )
+    except RuntimeError as exc:
+        message = str(exc)
+        if "Dataset scripts are no longer supported" in message:
+            raise SystemExit(
+                "DocLayNet on Hugging Face still uses a dataset loading script, "
+                "but your installed 'datasets' package no longer supports dataset scripts.\n\n"
+                "Fix inside the active virtual environment:\n"
+                "  python -m pip install --upgrade \"datasets>=2.19.0,<4.0.0\" huggingface_hub\n\n"
+                "Then rerun:\n"
+                "  python scripts/dataset/download_datasets.py --dataset doclaynet --split train --limit 200\n\n"
+                "The Windows symlink warning from huggingface_hub is not fatal; it only means the cache may use more disk space."
+            ) from exc
+        raise
     if limit is not None:
         dataset = dataset.take(limit)
 

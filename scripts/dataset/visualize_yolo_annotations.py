@@ -34,8 +34,10 @@ def draw_annotation(image_path: Path, label_path: Path, output_path: Path) -> No
             y_max = y_center + box_h / 2.0
             label = CLASS_NAMES[class_id] if 0 <= class_id < len(CLASS_NAMES) else str(class_id)
             draw.rectangle([x_min, y_min, x_max, y_max], outline=(255, 0, 0), width=3)
-            draw.rectangle([x_min, max(0, y_min - 18), x_min + 8 * len(label), y_min], fill=(255, 0, 0))
-            draw.text((x_min + 2, max(0, y_min - 16)), label, fill=(255, 255, 255))
+            text_y0 = max(0, y_min - 18)
+            text_y1 = max(text_y0 + 1, y_min)
+            draw.rectangle([x_min, text_y0, x_min + 8 * len(label), text_y1], fill=(255, 0, 0))
+            draw.text((x_min + 2, text_y0 + 2), label, fill=(255, 255, 255))
 
     ensure_dir(output_path.parent)
     image.save(output_path)
@@ -69,4 +71,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -74,6 +74,12 @@ cd "D:\TugasUnud\Semester 6\VISKOM\redaksi-data-sensitif-pelamar"
 pip install -r requirements-dataset.txt
 ```
 
+Jika sebelumnya sudah pernah meng-install `datasets` versi baru dan muncul error `Dataset scripts are no longer supported`, paksa versi yang kompatibel:
+
+```powershell
+python -m pip install --upgrade "datasets>=2.19.0,<4.0.0" huggingface_hub
+```
+
 Dependency penting:
 
 1. `pillow` untuk membaca/menulis image.
@@ -428,7 +434,46 @@ Sebelum training YOLOv5 dan YOLO26, pastikan ada:
 8. Catatan jumlah bbox per class.
 9. Catatan class yang masih kurang data.
 
-## 13. Troubleshooting
+## 13. Status Pemrosesan `datasets/instalasi_manual`
+
+Folder `datasets/instalasi_manual` sudah dapat dipakai sebagai sumber lokal, tetapi tidak semuanya otomatis menjadi dataset training final.
+
+Status pemrosesan:
+
+1. WIDER FACE train sudah dikonversi ke `datasets/privacy_shield/images/train` dan `datasets/privacy_shield/labels/train`.
+2. WIDER FACE val sudah dikonversi ke `datasets/privacy_shield/images/val` dan `datasets/privacy_shield/labels/val`.
+3. WIDER FACE test tidak dipakai karena tidak memiliki ground-truth bbox.
+4. MIDV-500 folder lokal yang tersedia adalah repo/tooling dan test data kecil, bukan full dataset. Dari test data lokal, hanya satu image yang cocok dengan ground truth `quad`; sample tersebut sudah dikonversi sebagai class `id_card` di train.
+5. Dataset final saat ini siap untuk initial training class `face_photo` dan smoke-test class `id_card`.
+6. Dataset belum cukup untuk final comparison semua class privacy karena class `signature`, `qr_code`, `barcode`, `stamp_or_seal`, `document_number_area`, `contact_block_visual`, `address_block_visual`, dan `sensitive_visual_region` masih perlu dataset/anotasi tambahan.
+
+Command yang sudah dipakai untuk WIDER:
+
+```powershell
+python scripts/dataset/convert_widerface_to_yolo.py `
+  --annotations datasets/instalasi_manual/wider_face_split/wider_face_train_bbx_gt.txt `
+  --images datasets/instalasi_manual/WIDER_train/WIDER_train/images `
+  --out-images datasets/privacy_shield/images/train `
+  --out-labels datasets/privacy_shield/labels/train
+
+python scripts/dataset/convert_widerface_to_yolo.py `
+  --annotations datasets/instalasi_manual/wider_face_split/wider_face_val_bbx_gt.txt `
+  --images datasets/instalasi_manual/WIDER_val/WIDER_val/images `
+  --out-images datasets/privacy_shield/images/val `
+  --out-labels datasets/privacy_shield/labels/val
+```
+
+Command yang dipakai untuk MIDV test data lokal:
+
+```powershell
+python scripts/dataset/convert_midv_quad_to_yolo.py `
+  --data-root datasets/instalasi_manual/midv500-master/midv500-master/tests/test_data/data `
+  --out-images datasets/privacy_shield/images/train `
+  --out-labels datasets/privacy_shield/labels/train `
+  --split-prefix train
+```
+
+## 14. Troubleshooting
 
 ### `ModuleNotFoundError: fitz`
 
@@ -444,6 +489,54 @@ Install Hugging Face datasets:
 
 ```powershell
 pip install datasets
+```
+
+### `RuntimeError: Dataset scripts are no longer supported, but found DocLayNet.py`
+
+DocLayNet di Hugging Face masih memakai dataset loading script. Versi baru package `datasets` tidak lagi mendukung mekanisme itu.
+
+Solusi di virtual environment aktif:
+
+```powershell
+python -m pip install --upgrade "datasets>=2.19.0,<4.0.0" huggingface_hub
+```
+
+Setelah itu jalankan ulang:
+
+```powershell
+python scripts/dataset/download_datasets.py `
+  --dataset doclaynet `
+  --split train `
+  --limit 200
+```
+
+Peringatan Windows tentang symlink dari `huggingface_hub` bukan error. Download tetap bisa berjalan, hanya cache dapat memakai ruang disk lebih besar. Jika ingin mematikan warning:
+
+```powershell
+$env:HF_HUB_DISABLE_SYMLINKS_WARNING="1"
+```
+
+### `pyarrow.lib.ArrowInvalid: Float value ... was truncated converting to int64`
+
+Error ini terjadi pada DocLayNet karena field `objects.area` pada dataset stream dapat berupa float, sedangkan schema loader lama mendefinisikannya sebagai integer.
+
+Script `download_datasets.py` sudah diberi schema override agar `objects.area` dibaca sebagai `float64`. Jika error ini masih muncul, pastikan file script sudah versi terbaru lalu jalankan ulang:
+
+```powershell
+python scripts/dataset/download_datasets.py `
+  --dataset doclaynet `
+  --split train `
+  --limit 200
+```
+
+Jika masih gagal, bersihkan cache Hugging Face untuk DocLayNet lalu ulangi:
+
+```powershell
+Remove-Item -Recurse -Force "$env:USERPROFILE\.cache\huggingface\hub\datasets--docling-project--DocLayNet"
+python scripts/dataset/download_datasets.py `
+  --dataset doclaynet `
+  --split train `
+  --limit 200
 ```
 
 ### `No images found`
@@ -468,4 +561,3 @@ labels/train/cv_001.txt
 ### `class id out of range`
 
 Pastikan class id hanya `0` sampai `9`, sesuai `data.yaml`.
-

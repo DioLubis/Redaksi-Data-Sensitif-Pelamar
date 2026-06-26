@@ -17,17 +17,27 @@ def parse_wider_annotation(annotation_file: Path) -> list[tuple[str, list[list[f
     while index < len(lines):
         image_rel = lines[index].strip()
         index += 1
-        if not image_rel:
+        if not image_rel or not image_rel.lower().endswith((".jpg", ".jpeg", ".png")):
             continue
-        face_count = int(lines[index].strip())
+        if index >= len(lines):
+            break
+        face_count_line = lines[index].strip()
         index += 1
+        try:
+            face_count = int(face_count_line)
+        except ValueError:
+            continue
         boxes = []
         for _ in range(face_count):
+            if index >= len(lines):
+                break
             values = [float(v) for v in lines[index].split()]
             index += 1
             x, y, w, h = values[:4]
             if w > 0 and h > 0:
                 boxes.append([x, y, x + w, y + h])
+        if face_count == 0 and index < len(lines) and not lines[index].strip().lower().endswith((".jpg", ".jpeg", ".png")):
+            index += 1
         records.append((image_rel, boxes))
 
     return records
@@ -104,4 +114,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
