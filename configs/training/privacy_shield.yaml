@@ -1,0 +1,29 @@
+experiment:
+  name: privacy_shield_5class
+  seed: 42
+  data: datasets/privacy_shield/data.yaml
+  image_size: 640
+  epochs: 50
+  batch_size: 8
+  device: auto
+  workers: 4
+  optimizer: SGD
+  learning_rate: 0.01
+  final_lr_factor: 0.01
+  momentum: 0.937
+  weight_decay: 0.0005
+  warmup_epochs: 3
+  deterministic: true
+  pretrained: true
+models:
+  yolov5:
+    repo: external/yolov5
+    hyp: configs/training/yolov5_hyp.yaml
+    n: yolov5n.pt
+    s: yolov5s.pt
+  yolo26:
+    n: yolo26n.pt
+    s: yolo26s.pt
+paths:
+  runs: experiments/runs
+  reports: experiments/reports

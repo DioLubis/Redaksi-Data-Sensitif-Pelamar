@@ -8,11 +8,5 @@
   "barcode": "barcode",
   "id": "id_card",
   "id_card": "id_card",
-  "document": "id_card",
-  "stamp": "stamp_or_seal",
-  "seal": "stamp_or_seal",
-  "document_number": "document_number_area",
-  "contact": "contact_block_visual",
-  "address": "address_block_visual"
+  "document": "id_card"
 }
-

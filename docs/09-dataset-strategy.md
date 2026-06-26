@@ -25,11 +25,6 @@ datasets/privacy_shield/data.yaml
 | 2 | `qr_code` |
 | 3 | `barcode` |
 | 4 | `id_card` |
-| 5 | `stamp_or_seal` |
-| 6 | `document_number_area` |
-| 7 | `contact_block_visual` |
-| 8 | `address_block_visual` |
-| 9 | `sensitive_visual_region` |
 
 File konfigurasi final: [data.yaml](../datasets/privacy_shield/data.yaml).
 
@@ -48,13 +43,13 @@ Tidak satu dataset open source yang langsung memenuhi semua kelas visual sensiti
 | Dataset | Kelas yang Dipakai | Cara Pakai |
 |---|---|---|
 | WIDER FACE | `face_photo` | Konversi bbox wajah ke class `face_photo`. Untuk konteks CV, wajah diperlakukan sebagai foto pribadi yang harus diredaksi. |
-| DocLayNet | `contact_block_visual`, `address_block_visual`, `sensitive_visual_region` | Dipakai untuk layout dokumen. Mapping otomatis hanya sebagai kandidat region; perlu review/anotasi ulang untuk area kontak/alamat. |
-| FUNSD | `contact_block_visual`, `address_block_visual`, `sensitive_visual_region` | Dipakai untuk formulir scan dan validasi OCR/layout. Entity form tidak langsung setara PII, jadi perlu manual review. |
-| MIDV-500 | `id_card`, `document_number_area`, `sensitive_visual_region` | Dipakai untuk dokumen identitas publik/dummy. Bbox dokumen menjadi `id_card`; nomor/field penting menjadi `document_number_area`. |
-| Resume/CV open source | `contact_block_visual`, `address_block_visual`, `face_photo`, `signature`, `qr_code`, `barcode` | Dipakai untuk dokumen yang mirip input kandidat. Perlu cek lisensi dan anotasi ulang. |
+| MIDV-500 | `id_card` | Bbox dokumen resmi dikonversi menjadi class `id_card`. |
+| Signature dataset open source | `signature` | Area tinta pada crop signature diberi bbox otomatis dan dibagi berdasarkan writer. |
+| QR dataset open source | `qr_code` | Label YOLO sumber dipetakan ke class `qr_code`. |
+| Barcode dataset open source | `barcode` | Label COCO sumber dipetakan ke class `barcode`. |
+| Resume/CV open source | OCR candidate regions saja | Dipertahankan untuk OCR/regex dan audit, bukan label YOLO final. |
 | Signature dataset open source | `signature` | Dipakai untuk memperkaya variasi tanda tangan. |
 | QR/barcode dataset open source | `qr_code`, `barcode` | Dipakai untuk memperkaya pola QR dan barcode pada dokumen. |
-| Stamp/seal dataset open source | `stamp_or_seal` | Dipakai jika lisensinya jelas; jika tidak, label dari dokumen open source yang memang memuat stempel. |
 
 ## 5. Aturan Konversi ke Format YOLO
 

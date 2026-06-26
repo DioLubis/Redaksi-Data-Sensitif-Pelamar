@@ -278,6 +278,47 @@ Catatan:
 2. Untuk class `document_number_area`, biasanya perlu anotasi tambahan karena annotation bawaan mungkin hanya menandai dokumen/kartu, bukan nomor spesifik.
 3. Prioritaskan dokumen publik/dummy sesuai lisensi dataset.
 
+### Resume Download MIDV-500 Tanpa Duplikat
+
+### Mode Hemat Penyimpanan (Direkomendasikan)
+
+Unduh penuh 50 template MIDV-500 tidak diperlukan untuk kelas `id_card` pada prototype ini. Gunakan maksimal 20 template yang sudah lengkap dan konversi hanya 80 frame representatif tiap template. Konfigurasi split yang tidak mencampur template antar train, validation, dan test ada pada `configs/midv500_curated_split.json`.
+
+Konverter `convert_midv_quad_to_yolo.py` menyimpan hasil sebagai JPEG kualitas 85 dengan sisi terpanjang maksimum 1600 piksel. Hasilnya langsung memiliki label YOLO kelas `id_card` dan jauh lebih kecil dari TIFF mentah.
+
+Jalankan konversi per split dengan daftar template dari `configs/midv500_curated_split.json`. Setelah `validate_yolo_labels.py` menyatakan valid, raw MIDV TIFF boleh dihapus karena `datasets/privacy_shield/images` dan `datasets/privacy_shield/labels` adalah artefak kerja untuk training. Jangan hapus `data.yaml`, konfigurasi split, atau label YOLO.
+
+### Dataset QR Code dan Signature
+
+Jika dataset QR Code sudah memiliki folder `images/<split>` dan `labels/<split>` berformat YOLO, gunakan `import_yolo_class.py` untuk memetakan class sumber menjadi `qr_code` tanpa mengubah koordinat bounding box. Validasi setiap split karena image tanpa file label harus dilewati.
+
+Dataset signature berupa crop dapat diberi label otomatis dengan `prepare_signature_crops.py`. Script mendeteksi area tinta non-putih, menambah margin 8%, dan membagi writer agar identitas writer tidak muncul pada lebih dari satu split. Label ini cocok sebagai data awal kelas `signature`; data tanda tangan yang benar-benar berada di halaman dokumen tetap diperlukan pada tahap pengayaan berikutnya.
+
+Package `midv500.download_dataset()` dapat terlihat mulai dari awal lagi karena script bawaannya selalu mengiterasi semua URL. Untuk menghindari duplikasi, gunakan script resume proyek ini:
+
+```powershell
+python scripts/dataset/resume_midv500_download.py `
+  --output datasets/raw/midv500_full `
+  --dry-run
+```
+
+Command `--dry-run` hanya menampilkan folder yang sudah lengkap dan folder yang masih perlu diunduh. Jika hasilnya benar, lanjutkan:
+
+```powershell
+python scripts/dataset/resume_midv500_download.py `
+  --output datasets/raw/midv500_full
+```
+
+Script ini:
+
+1. Mengecek folder `datasets/raw/midv500_full/midv500`.
+2. Men-skip dokumen yang sudah punya folder `images` dan `ground_truth`.
+3. Mengunduh hanya dokumen yang belum lengkap.
+4. Menyimpan file sementara sebagai `.zip.part` agar download gagal tidak dianggap final.
+5. Menghapus zip setelah extract berhasil, kecuali memakai opsi `--keep-zip`.
+
+Jika sebelumnya berhenti di folder `19_esp_drvlic`, script ini seharusnya melanjutkan dari `20_esp_id_new` selama folder `01` sampai `19` sudah lengkap.
+
 ## 8. Dataset Resume/CV
 
 Dataset resume/CV digunakan untuk konteks dokumen yang paling dekat dengan sistem Karierly.

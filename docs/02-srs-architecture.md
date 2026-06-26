@@ -199,6 +199,7 @@ Tanggung jawab:
 2. Menghasilkan bbox dalam format `[x_min, y_min, x_max, y_max]`.
 3. Menyimpan confidence, class, model name, page number, latency.
 4. Mendukung evaluasi model dengan dataset dan split sama.
+5. Pada dataset saat ini, hanya mengeluarkan `face_photo`, `signature`, `qr_code`, `barcode`, dan `id_card`. PII visual lain diteruskan ke OCR/regex/manual review, bukan diprediksi dengan class YOLO yang tidak dilatih.
 
 Interface:
 
@@ -315,4 +316,3 @@ Tampilan MVP:
 5. Sanitized profile viewer.
 6. Safe AI Screening result.
 7. Model comparison summary.
-

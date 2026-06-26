@@ -1,0 +1,19 @@
+{
+  "description": "Template-disjoint MIDV-500 subset for the id_card class. Each document template is sampled deterministically by the converter.",
+  "max_images_per_document": 80,
+  "jpeg_quality": 85,
+  "max_long_side": 1600,
+  "splits": {
+    "train": [
+      "01_alb_id", "02_aut_drvlic_new", "03_aut_id_old", "04_aut_id",
+      "05_aze_passport", "06_bra_passport", "07_chl_id", "08_chn_homereturn",
+      "09_chn_id", "10_cze_id", "11_cze_passport", "12_deu_drvlic_new"
+    ],
+    "val": [
+      "13_deu_drvlic_old", "14_deu_id_new", "15_deu_id_old", "16_deu_passport_new"
+    ],
+    "test": [
+      "17_deu_passport_old", "18_dza_passport", "19_esp_drvlic", "20_esp_id_new"
+    ]
+  }
+}

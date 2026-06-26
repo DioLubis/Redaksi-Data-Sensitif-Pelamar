@@ -28,6 +28,10 @@ reports/
 
 # Model artifacts
 runs/
+experiments/runs/
+experiments/reports/
+artifacts/
+external/yolov5/
 weights/
 *.pt
 *.onnx

@@ -10,9 +10,9 @@ Pipeline sistem melakukan validasi dokumen, konversi PDF ke gambar, deteksi area
 
 ## Status Proyek
 
-Tahap saat ini: **desain dan dokumentasi kebutuhan**.
+Tahap saat ini: **privacy pipeline dan aplikasi Streamlit lokal**.
 
-Belum ada implementasi kode produksi pada tahap ini. Dokumentasi ini menjadi dasar untuk tahap implementasi prototype.
+Dataset final hanya memuat kelas visual yang benar-benar tersedia dan tervalidasi. Pipeline aplikasi tetap merupakan desain prototype; hasil training tidak boleh dianggap sebagai sistem produksi tanpa evaluasi redaksi end-to-end.
 
 ## Tujuan Utama
 
@@ -59,21 +59,17 @@ Fitur opsional:
 4. Dashboard metrik eksperimen.
 5. Active learning untuk memperbaiki anotasi.
 
-## Kelas Deteksi Visual
+## Kelas Deteksi Visual yang Didukung Dataset
 
-Kelas utama:
+Model YOLO pada eksperimen ini hanya dilatih untuk lima kelas berikut:
 
 1. `face_photo`
-2. `personal_photo`
-3. `signature`
-4. `qr_code`
-5. `barcode`
-6. `id_card`
-7. `stamp_or_seal`
-8. `document_number_area`
-9. `sensitive_visual_region`
-10. `contact_block_visual`
-11. `address_block_visual`
+2. `signature`
+3. `qr_code`
+4. `barcode`
+5. `id_card`
+
+Alamat, kontak, nomor dokumen, stempel, dan kategori PII visual lain tidak diklaim sebagai keluaran YOLO pada versi dataset ini. Perlindungannya tetap melalui OCR, regex/NER, dan manual review untuk kasus berisiko tinggi.
 
 ## Kelas Deteksi Tekstual
 
@@ -133,6 +129,10 @@ flowchart TD
 | [Acceptance Criteria](docs/08-acceptance-criteria.md) | Kriteria penerimaan per modul |
 | [Dataset Strategy and Preparation](docs/09-dataset-strategy.md) | Strategi dataset, labeling, split, augmentasi, dan script preparation |
 | [Manual Dataset Installation](docs/10-manual-dataset-installation.md) | Panduan instalasi manual WIDER FACE, MIDV-500, DocLayNet, FUNSD, dan dataset CV |
+| [Dataset Inventory](docs/11-dataset-inventory.md) | Kelas yang tersedia, sumber data, dan batasan eksperimen saat ini |
+| [Training YOLOv5 and YOLO26](docs/12-training-yolov5-yolo26.md) | Setup, training, evaluasi, benchmark, export, dan tabel hasil |
+| [Redaction Privacy Pipeline](docs/13-redaction-privacy-pipeline.md) | Pipeline lokal, kontrak JSON, aturan redaksi, dan test |
+| [Streamlit Application](docs/14-streamlit-application.md) | Instalasi, menjalankan aplikasi, output, dan panel evaluasi |
 
 ## Stack Prototype yang Disarankan
 
@@ -183,6 +183,17 @@ datasets/privacy_shield/data.yaml
 4. `redaction_report`: laporan lokasi redaksi, metode redaksi, dan model/alat pendeteksi.
 5. `model_evaluation_report`: perbandingan YOLOv5 dan YOLO26.
 6. `privacy_protection_metrics`: metrik keberhasilan perlindungan data.
+
+## Menjalankan Aplikasi
+
+Setelah weight `best.pt` tersedia dan Tesseract sudah terpasang:
+
+```powershell
+pip install -r requirements-privacy.txt
+streamlit run streamlit_app.py
+```
+
+Aplikasi dapat diakses pada `http://localhost:8501`. Pilih backend model, masukkan path weight, unggah dokumen, lalu jalankan redaksi. Detail output dan batasan ada di [Streamlit Application](docs/14-streamlit-application.md).
 
 ## Catatan YOLO26
 

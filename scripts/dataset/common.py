@@ -12,11 +12,6 @@ CLASS_NAMES = [
     "qr_code",
     "barcode",
     "id_card",
-    "stamp_or_seal",
-    "document_number_area",
-    "contact_block_visual",
-    "address_block_visual",
-    "sensitive_visual_region",
 ]
 
 CLASS_TO_ID = {name: idx for idx, name in enumerate(CLASS_NAMES)}
@@ -106,4 +101,3 @@ def write_yolo_label(path: Path, boxes: Iterable[YoloBox]) -> None:
     ensure_dir(path.parent)
     lines = [box.to_line() for box in boxes]
     path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-

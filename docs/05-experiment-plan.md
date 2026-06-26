@@ -21,24 +21,16 @@ Membandingkan YOLOv5 dan YOLO26 pada tugas deteksi area visual sensitif dalam do
 ## Kelas Evaluasi
 
 1. `face_photo`
-2. `personal_photo`
-3. `signature`
-4. `qr_code`
-5. `barcode`
-6. `id_card`
-7. `stamp_or_seal`
-8. `document_number_area`
-9. `sensitive_visual_region`
-10. `contact_block_visual`
-11. `address_block_visual`
+2. `signature`
+3. `qr_code`
+4. `barcode`
+5. `id_card`
+
+Kelas lain yang dirancang pada tahap awal tidak dimasukkan ke tabel metrik YOLO karena belum memiliki ground truth pada setiap split. Mereka tetap berada pada pipeline OCR/regex atau manual review.
 
 ## Dataset Split
 
-Rasio default:
-
-1. Train: 70%
-2. Validation: 15%
-3. Test: 15%
+Split final mengikuti split sumber yang dibekukan per identitas/template. Rasio global tidak dipaksakan karena sumber berbeda memiliki split resmi yang berbeda.
 
 Syarat:
 
@@ -143,4 +135,3 @@ Jika package/model YOLO26 tidak dapat digunakan di environment lokal:
 3. Dokumentasikan alasan teknis.
 4. Tetap jalankan YOLOv5 sebagai baseline.
 5. Tulis keterbatasan penelitian secara eksplisit.
-
