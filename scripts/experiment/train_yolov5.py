@@ -1,20 +1,24 @@
 from __future__ import annotations
 
 import argparse
-import sys
 import time
 
-from common import load_config, resolve, run, select_device, write_metadata
+from common import ensure_project_python, load_config, python_executable, resolve, run, runtime_data_config, select_device, write_metadata
 
 
 def main() -> None:
+    ensure_project_python()
     parser = argparse.ArgumentParser(description="Train official YOLOv5 on Privacy Shield.")
     parser.add_argument("--config", default="configs/training/privacy_shield.yaml")
     parser.add_argument("--model-size", choices=["n", "s"], default="n")
     parser.add_argument("--device")
+    parser.add_argument("--batch-size", type=int)
+    parser.add_argument("--workers", type=int)
     args = parser.parse_args()
     config = load_config(args.config)
     experiment = config["experiment"]
+    batch_size = args.batch_size or experiment["batch_size"]
+    workers = experiment["workers"] if args.workers is None else args.workers
     repo = resolve(config["models"]["yolov5"]["repo"])
     train_script = repo / "train.py"
     if not train_script.exists():
@@ -24,19 +28,20 @@ def main() -> None:
     name = f"yolov5{args.model_size}_seed{experiment['seed']}"
     project = resolve(config["paths"]["runs"]) / "yolov5"
     output_dir = project / name
+    data_config = runtime_data_config(experiment["data"])
     command = [
-        sys.executable, str(train_script), "--weights", model, "--data", str(resolve(experiment["data"])),
+        python_executable(), str(train_script), "--weights", model, "--data", str(data_config),
         "--img", str(experiment["image_size"]), "--epochs", str(experiment["epochs"]),
-        "--batch-size", str(experiment["batch_size"]), "--device", device, "--workers", str(experiment["workers"]),
+        "--batch-size", str(batch_size), "--device", device, "--workers", str(workers),
         "--optimizer", experiment["optimizer"], "--hyp", str(resolve(config["models"]["yolov5"]["hyp"])),
         "--seed", str(experiment["seed"]), "--project", str(project), "--name", name, "--exist-ok",
     ]
-    write_metadata(output_dir, {"backend": "yolov5", "model": model, "device": device, "config": config})
+    write_metadata(output_dir, {"backend": "yolov5", "model": model, "device": device, "batch_size": batch_size, "workers": workers, "config": config})
     started = time.perf_counter()
     run(command)
     write_metadata(
         output_dir,
-        {"backend": "yolov5", "model": model, "device": device, "config": config, "training_time_s": time.perf_counter() - started, "peak_gpu_memory_mb": None},
+        {"backend": "yolov5", "model": model, "device": device, "batch_size": batch_size, "workers": workers, "config": config, "training_time_s": time.perf_counter() - started, "peak_gpu_memory_mb": None},
     )
 
 

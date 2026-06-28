@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
-from common import load_config, resolve, run
+from common import ensure_project_python, load_config, python_executable, resolve, run
 
 
 def main() -> None:
+    ensure_project_python()
     parser = argparse.ArgumentParser(description="Export a YOLOv5 or YOLO26 weight file to ONNX.")
     parser.add_argument("--backend", choices=["yolov5", "yolo26"], required=True)
     parser.add_argument("--weights", required=True, type=Path)
@@ -18,7 +18,7 @@ def main() -> None:
     image_size = args.image_size or config["experiment"]["image_size"]
     if args.backend == "yolov5":
         repo = resolve(config["models"]["yolov5"]["repo"])
-        run([sys.executable, str(repo / "export.py"), "--weights", str(args.weights), "--imgsz", str(image_size), "--include", "onnx"])
+        run([python_executable(), str(repo / "export.py"), "--weights", str(args.weights), "--imgsz", str(image_size), "--include", "onnx"])
     else:
         from ultralytics import YOLO
 

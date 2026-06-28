@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-from common import load_config, read_last_metrics_csv, resolve, run, select_device
+from common import ensure_project_python, load_config, python_executable, read_last_metrics_csv, resolve, run, runtime_data_config, select_device
 
 
 def save_report(path: Path, report: dict) -> None:
@@ -15,10 +14,11 @@ def save_report(path: Path, report: dict) -> None:
 
 def evaluate_yolov5(config: dict, weights: Path, device: str) -> dict:
     repo = resolve(config["models"]["yolov5"]["repo"])
+    data_config = runtime_data_config(config["experiment"]["data"])
     name = f"yolov5_{weights.stem}_test"
     project = resolve(config["paths"]["runs"]) / "evaluation"
     run([
-        sys.executable, str(repo / "val.py"), "--weights", str(weights), "--data", str(resolve(config["experiment"]["data"])),
+        python_executable(), str(repo / "val.py"), "--weights", str(weights), "--data", str(data_config),
         "--img", str(config["experiment"]["image_size"]), "--batch-size", str(config["experiment"]["batch_size"]),
         "--task", "test", "--device", device, "--project", str(project), "--name", name, "--exist-ok", "--plots",
     ])
@@ -30,10 +30,11 @@ def evaluate_yolov5(config: dict, weights: Path, device: str) -> dict:
 def evaluate_yolo26(config: dict, weights: Path, device: str) -> dict:
     from ultralytics import YOLO
 
+    data_config = runtime_data_config(config["experiment"]["data"])
     name = f"yolo26_{weights.stem}_test"
     project = resolve(config["paths"]["runs"]) / "evaluation"
     results = YOLO(str(weights)).val(
-        data=str(resolve(config["experiment"]["data"])), split="test", imgsz=config["experiment"]["image_size"],
+        data=str(data_config), split="test", imgsz=config["experiment"]["image_size"],
         batch=config["experiment"]["batch_size"], device=device, project=str(project), name=name, exist_ok=True, plots=True,
     )
     precision = float(results.box.mp)
@@ -46,6 +47,7 @@ def evaluate_yolo26(config: dict, weights: Path, device: str) -> dict:
 
 
 def main() -> None:
+    ensure_project_python()
     parser = argparse.ArgumentParser(description="Evaluate a YOLOv5 or YOLO26 weight file on the identical test split.")
     parser.add_argument("--backend", choices=["yolov5", "yolo26"], required=True)
     parser.add_argument("--weights", required=True, type=Path)

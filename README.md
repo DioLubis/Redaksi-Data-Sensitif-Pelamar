@@ -73,17 +73,50 @@ python scripts/dataset/validate_yolo_labels.py `
   --output reports/dataset/validation_summary.json
 ```
 
-## 5. Instalasi
+## 5. Instalasi dan Menjalankan Program
 
-Gunakan Python 3.10+ dan buat virtual environment:
+Mulai dari terminal PowerShell baru. Jika sebelumnya masih berada di environment lain, keluar dulu:
 
 ```powershell
+deactivate
+```
+
+Masuk ke folder proyek dan aktifkan `.venv` proyek ini:
+
+```powershell
+cd "D:\TugasUnud\Semester 6\VISKOM\redaksi-data-sensitif-pelamar"
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements-privacy.txt
+```
+
+### PyTorch untuk Training
+
+Training YOLO pada proyek ini dijalankan dengan GPU NVIDIA. Instal PyTorch CUDA di dalam `.venv` proyek ini:
+
+```powershell
+python -m pip uninstall -y torch torchvision torchaudio
+python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements-training.txt
 ```
+
+Jika aktivasi `.venv` diblokir PowerShell, jalankan:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+### Menjalankan Aplikasi
+
+Aplikasi utama adalah Streamlit:
+
+```powershell
+streamlit run streamlit_app.py
+```
+
+Buka `http://localhost:8501` di browser. Dari UI, pilih backend YOLOv5/YOLO26, isi path weight `best.pt`, upload PDF/JPG/PNG, lalu jalankan scan.
 
 Untuk PDF, `PyMuPDF` sudah dicantumkan pada requirements. Untuk OCR, instal Tesseract binary secara terpisah dan pastikan tersedia pada `PATH`:
 
@@ -100,16 +133,19 @@ git clone https://github.com/ultralytics/yolov5.git external/yolov5
 pip install -r external/yolov5/requirements.txt
 ```
 
+Jika terminal sebelumnya pernah memakai environment proyek lain, misalnya `D:\TugasUnud\Semester 6\VISKOM\CNN\.venv`, jalankan ulang dari awal bagian ini: `deactivate`, `cd` ke folder `redaksi-data-sensitif-pelamar`, lalu aktifkan `.\.venv\Scripts\Activate.ps1`. Script eksperimen akan memaksa subprocess YOLOv5 memakai `.venv` proyek ini, bukan environment proyek lain.
+
 ## 6. Training dan Evaluasi
 
 Konfigurasi perbandingan ada pada `configs/training/privacy_shield.yaml`:
 
 - input size: 640
 - epochs: 50
-- batch size: 8
+- batch size: 4
 - seed: 42
 - optimizer: SGD
 - dataset dan split identik
+- workers: 0
 
 Gunakan pasangan ukuran model setara, misalnya `yolov5n` versus `yolo26n`.
 
@@ -135,9 +171,20 @@ python scripts/experiment/benchmark_inference.py --backend yolo26 --weights expe
 python scripts/experiment/generate_comparison_report.py
 ```
 
+Default `batch_size: 4` dan `workers: 0` dipakai agar DataLoader stabil di Windows dan GTX 1650 4GB. Jika masih muncul `CUDA out of memory`, `cv2.error: Insufficient memory`, atau `Caught MemoryError in DataLoader worker`, jalankan ulang dengan batch lebih kecil:
+
+```powershell
+python scripts/experiment/train_yolov5.py --model-size n --device 0 --batch-size 2 --workers 0
+python scripts/experiment/train_yolo26.py --model-size n --device 0 --batch-size 2 --workers 0
+```
+
+`workers: 0` memang membuat loading data lebih lambat, tetapi lebih stabil pada Windows karena tidak membuat beberapa proses worker yang membaca dan mengaugmentasi gambar secara paralel.
+
 Output eksperimen tersimpan di `experiments/runs` dan `experiments/reports`: weights terbaik, confusion matrix, PR curve, JSON metrics, CSV, dan grafik perbandingan. Gunakan precision, recall, F1, mAP@50, mAP@50:95, latency, FPS, ukuran model, waktu training, serta peak GPU memory bila tersedia.
 
-Untuk memverifikasi pipeline pada CPU tanpa melatih seluruh dataset, buat subset seimbang lokal dengan `python scripts/experiment/create_quick_subset.py`. Eksperimen CPU dua epoch hanya untuk smoke test sistem; jangan gunakan metriknya sebagai hasil akhir penelitian.
+Untuk YOLOv5, script otomatis membuat `experiments/runtime/data_absolute.yaml` agar path dataset tetap benar walaupun `train.py` berjalan dari dalam folder `external/yolov5`. Jangan menjalankan `external/yolov5/train.py` langsung, karena path dataset relatif dapat terbaca dari folder YOLOv5 dan menghasilkan error `Dataset not found`.
+
+Untuk percobaan cepat sebelum eksperimen penuh, buat subset seimbang lokal dengan `python scripts/experiment/create_quick_subset.py`. Metrik dari subset cepat hanya untuk validasi alur sistem; jangan gunakan sebagai hasil akhir penelitian.
 
 ## 7. Privacy Pipeline CLI
 

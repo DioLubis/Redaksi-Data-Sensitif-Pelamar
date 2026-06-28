@@ -1,4 +1,6 @@
-# Install PyTorch matching the local CUDA runtime first:
+# Install PyTorch separately before this file so it matches the local machine.
+# NVIDIA GPU example for Windows:
+# python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 # https://pytorch.org/get-started/locally/
 ultralytics==8.4.70
 PyYAML>=6.0.1

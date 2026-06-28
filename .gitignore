@@ -1,6 +1,8 @@
 # Python
 __pycache__/
 *.py[cod]
+.venv/
+venv/
 
 # Local dataset payloads
 datasets/raw/
@@ -30,6 +32,7 @@ reports/
 runs/
 experiments/runs/
 experiments/reports/
+experiments/runtime/
 artifacts/
 external/yolov5/
 weights/
