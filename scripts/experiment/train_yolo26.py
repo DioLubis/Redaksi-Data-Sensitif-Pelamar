@@ -14,6 +14,8 @@ def main() -> None:
     parser.add_argument("--device")
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--workers", type=int)
+    parser.add_argument("--epochs", type=int)
+    parser.add_argument("--image-size", type=int)
     args = parser.parse_args()
     from ultralytics import YOLO
 
@@ -21,12 +23,14 @@ def main() -> None:
     experiment = config["experiment"]
     batch_size = args.batch_size or experiment["batch_size"]
     workers = experiment["workers"] if args.workers is None else args.workers
+    epochs = args.epochs or experiment["epochs"]
+    image_size = args.image_size or experiment["image_size"]
     model_name = config["models"]["yolo26"][args.model_size]
     device = select_device(experiment["device"], args.device)
-    name = f"yolo26{args.model_size}_seed{experiment['seed']}"
+    name = f"yolo26{args.model_size}_{experiment['name']}_seed{experiment['seed']}"
     project = resolve(config["paths"]["runs"]) / "yolo26"
     output_dir = project / name
-    write_metadata(output_dir, {"backend": "yolo26", "model": model_name, "device": device, "batch_size": batch_size, "workers": workers, "config": config})
+    write_metadata(output_dir, {"backend": "yolo26", "model": model_name, "device": device, "image_size": image_size, "epochs": epochs, "batch_size": batch_size, "workers": workers, "config": config})
     try:
         import torch
 
@@ -38,7 +42,7 @@ def main() -> None:
     model = YOLO(model_name)
     data_config = runtime_data_config(experiment["data"])
     model.train(
-        data=str(data_config), imgsz=experiment["image_size"], epochs=experiment["epochs"],
+        data=str(data_config), imgsz=image_size, epochs=epochs,
         batch=batch_size, device=device, workers=workers, optimizer=experiment["optimizer"],
         lr0=experiment["learning_rate"], lrf=experiment["final_lr_factor"], momentum=experiment["momentum"],
         weight_decay=experiment["weight_decay"], warmup_epochs=experiment["warmup_epochs"], seed=experiment["seed"],
@@ -50,7 +54,7 @@ def main() -> None:
         peak_memory_mb = round(torch.cuda.max_memory_allocated() / 1024**2, 3)
     write_metadata(
         output_dir,
-        {"backend": "yolo26", "model": model_name, "device": device, "batch_size": batch_size, "workers": workers, "config": config, "training_time_s": time.perf_counter() - started, "peak_gpu_memory_mb": peak_memory_mb},
+        {"backend": "yolo26", "model": model_name, "device": device, "image_size": image_size, "epochs": epochs, "batch_size": batch_size, "workers": workers, "config": config, "training_time_s": time.perf_counter() - started, "peak_gpu_memory_mb": peak_memory_mb},
     )
 
 

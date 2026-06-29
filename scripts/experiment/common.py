@@ -50,6 +50,7 @@ def python_executable() -> str:
 
 def runtime_data_config(data_path: str | Path) -> Path:
     source = resolve(data_path)
+    ensure_data_config(source)
     with source.open(encoding="utf-8") as file:
         data = yaml.safe_load(file)
     dataset_root = Path(data.get("path", source.parent))
@@ -61,6 +62,23 @@ def runtime_data_config(data_path: str | Path) -> Path:
     with output.open("w", encoding="utf-8") as file:
         yaml.safe_dump(data, file, sort_keys=False, allow_unicode=True)
     return output
+
+
+def ensure_data_config(source: Path) -> None:
+    if source.exists():
+        return
+    quick_data = PROJECT_ROOT / "artifacts" / "quick_training_dataset" / "data.yaml"
+    if source.resolve() != quick_data.resolve():
+        raise FileNotFoundError(f"Dataset config is missing: {source}")
+    print("Medium training dataset is missing; building artifacts/quick_training_dataset first...")
+    run([
+        python_executable(),
+        str(PROJECT_ROOT / "scripts" / "experiment" / "create_quick_subset.py"),
+        "--source",
+        str(PROJECT_ROOT / "datasets" / "privacy_shield"),
+        "--output",
+        str(PROJECT_ROOT / "artifacts" / "quick_training_dataset"),
+    ])
 
 
 def select_device(configured_device: str, override: str | None) -> str:

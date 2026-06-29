@@ -10,7 +10,7 @@ from PIL import Image
 from privacy_shield.schemas import Box, Detection
 
 CLASS_NAMES = ["face_photo", "signature", "qr_code", "barcode", "id_card"]
-VISUAL_METHOD = {"face_photo": "blur", "signature": "black_box", "qr_code": "pixelate", "barcode": "pixelate", "id_card": "black_box"}
+VISUAL_METHOD = {"face_photo": "black_box", "signature": "black_box", "qr_code": "pixelate", "barcode": "pixelate", "id_card": "black_box"}
 
 
 class YOLODetector:
@@ -25,7 +25,9 @@ class YOLODetector:
             raise FileNotFoundError("Model weights are required and were not found.")
 
     def detect(self, image_path: str | Path, page_number: int) -> list[Detection]:
-        return self._detect_yolov5(Path(image_path), page_number) if self.model_name == "yolov5" else self._detect_yolo26(Path(image_path), page_number)
+        path = Path(image_path)
+        detections = self._detect_yolov5(path, page_number) if self.model_name == "yolov5" else self._detect_yolo26(path, page_number)
+        return self._with_face_fallback(path, page_number, detections)
 
     def _build(self, class_id: int, confidence: float, box: Box, page_number: int) -> Detection:
         if class_id < 0 or class_id >= len(CLASS_NAMES):
@@ -64,3 +66,33 @@ class YOLODetector:
                 y2 = round((y_center + box_height / 2) * height)
                 detections.append(self._build(int(class_id), confidence, Box(x1, y1, x2, y2), page_number))
             return detections
+
+    def _with_face_fallback(self, image_path: Path, page_number: int, detections: list[Detection]) -> list[Detection]:
+        if any(item.category == "face_photo" for item in detections):
+            return detections
+        try:
+            import cv2
+        except ImportError:
+            return detections
+        cascade_path = Path(cv2.data.haarcascades) / "haarcascade_frontalface_default.xml"
+        if not cascade_path.is_file():
+            return detections
+        image = cv2.imread(str(image_path))
+        if image is None:
+            return detections
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        faces = cv2.CascadeClassifier(str(cascade_path)).detectMultiScale(gray, scaleFactor=1.08, minNeighbors=5, minSize=(32, 32))
+        fallback = [
+            Detection(
+                page_number=page_number,
+                category="face_photo",
+                source="opencv_face_fallback",
+                confidence=0.5,
+                box=Box(int(x), int(y), int(x + width), int(y + height)),
+                severity="high",
+                evidence_hash=None,
+                redaction_method=VISUAL_METHOD["face_photo"],
+            )
+            for x, y, width, height in faces
+        ]
+        return [*detections, *fallback]

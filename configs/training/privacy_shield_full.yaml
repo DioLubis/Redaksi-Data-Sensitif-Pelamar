@@ -1,9 +1,9 @@
 experiment:
-  name: privacy_shield_5class_medium
+  name: privacy_shield_5class_full
   seed: 42
-  data: artifacts/quick_training_dataset/data.yaml
-  image_size: 416
-  epochs: 25
+  data: datasets/privacy_shield/data.yaml
+  image_size: 640
+  epochs: 50
   batch_size: 4
   device: auto
   workers: 0

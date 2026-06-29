@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass, field
 from hashlib import sha256
 from typing import Literal
 
-Source = Literal["visual", "ocr_regex"]
+Source = Literal["visual", "ocr_regex", "opencv_face_fallback"]
 
 
 @dataclass(frozen=True)

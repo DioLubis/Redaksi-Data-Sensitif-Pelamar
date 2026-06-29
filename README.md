@@ -116,7 +116,7 @@ Aplikasi utama adalah Streamlit:
 streamlit run streamlit_app.py
 ```
 
-Buka `http://localhost:8501` di browser. Dari UI, pilih backend YOLOv5/YOLO26, isi path weight `best.pt`, upload PDF/JPG/PNG, lalu jalankan scan.
+Buka `http://localhost:8501` di browser. Dari UI, upload PDF/JPG/PNG lalu jalankan scan. Aplikasi otomatis mencari `best.pt` terbaru untuk YOLOv5 dan YOLO26, lalu menjalankan keduanya pada dokumen yang sama untuk perbandingan.
 
 Untuk PDF, `PyMuPDF` sudah dicantumkan pada requirements. Untuk OCR, instal Tesseract binary secara terpisah dan pastikan tersedia pada `PATH`:
 
@@ -139,13 +139,18 @@ Jika terminal sebelumnya pernah memakai environment proyek lain, misalnya `D:\Tu
 
 Konfigurasi perbandingan ada pada `configs/training/privacy_shield.yaml`:
 
-- input size: 640
-- epochs: 50
+- mode: medium training
+- dataset: subset lokal di `artifacts/quick_training_dataset`
+- ukuran subset default: 800 train, 150 validation, 150 test
+- input size: 416
+- epochs: 25
 - batch size: 4
 - seed: 42
 - optimizer: SGD
 - dataset dan split identik
 - workers: 0
+
+Default ini sengaja dibuat sebagai eksperimen menengah agar training tetap realistis di GTX 1650, tetapi lebih serius daripada smoke test singkat. Jika `artifacts/quick_training_dataset/data.yaml` belum ada, script training akan membuat subset otomatis dari `datasets/privacy_shield`. Estimasi waktu tetap bergantung kondisi laptop, tetapi beban default sekarang sekitar empat kali lebih besar daripada konfigurasi sebelumnya 10 epoch/500 gambar yang selesai sekitar 30 menit.
 
 Gunakan pasangan ukuran model setara, misalnya `yolov5n` versus `yolo26n`.
 
@@ -157,17 +162,17 @@ python scripts/experiment/train_yolo26.py --model-size n --device 0
 # Evaluasi test split
 python scripts/experiment/evaluate_models.py `
   --backend yolov5 `
-  --weights experiments/runs/yolov5/yolov5n_seed42/weights/best.pt `
+  --weights experiments/runs/yolov5/yolov5n_privacy_shield_5class_medium_seed42/weights/best.pt `
   --device 0
 
 python scripts/experiment/evaluate_models.py `
   --backend yolo26 `
-  --weights experiments/runs/yolo26/yolo26n_seed42/weights/best.pt `
+  --weights experiments/runs/yolo26/yolo26n_privacy_shield_5class_medium_seed42/weights/best.pt `
   --device 0
 
 # Benchmark dan laporan perbandingan
-python scripts/experiment/benchmark_inference.py --backend yolov5 --weights experiments/runs/yolov5/yolov5n_seed42/weights/best.pt --device 0
-python scripts/experiment/benchmark_inference.py --backend yolo26 --weights experiments/runs/yolo26/yolo26n_seed42/weights/best.pt --device 0
+python scripts/experiment/benchmark_inference.py --backend yolov5 --weights experiments/runs/yolov5/yolov5n_privacy_shield_5class_medium_seed42/weights/best.pt --device 0
+python scripts/experiment/benchmark_inference.py --backend yolo26 --weights experiments/runs/yolo26/yolo26n_privacy_shield_5class_medium_seed42/weights/best.pt --device 0
 python scripts/experiment/generate_comparison_report.py
 ```
 
@@ -180,11 +185,27 @@ python scripts/experiment/train_yolo26.py --model-size n --device 0 --batch-size
 
 `workers: 0` memang membuat loading data lebih lambat, tetapi lebih stabil pada Windows karena tidak membuat beberapa proses worker yang membaca dan mengaugmentasi gambar secara paralel.
 
+Untuk cek alur paling cepat sebelum menunggu 25 epoch, jalankan 3 epoch dan image size 320:
+
+```powershell
+python scripts/experiment/train_yolov5.py --model-size n --device 0 --epochs 3 --image-size 320 --batch-size 4 --workers 0
+python scripts/experiment/train_yolo26.py --model-size n --device 0 --epochs 3 --image-size 320 --batch-size 4 --workers 0
+```
+
 Output eksperimen tersimpan di `experiments/runs` dan `experiments/reports`: weights terbaik, confusion matrix, PR curve, JSON metrics, CSV, dan grafik perbandingan. Gunakan precision, recall, F1, mAP@50, mAP@50:95, latency, FPS, ukuran model, waktu training, serta peak GPU memory bila tersedia.
+
+Jika nanti benar-benar perlu eksperimen full dataset, gunakan config terpisah:
+
+```powershell
+python scripts/experiment/train_yolov5.py --config configs/training/privacy_shield_full.yaml --model-size n --device 0
+python scripts/experiment/train_yolo26.py --config configs/training/privacy_shield_full.yaml --model-size n --device 0
+```
+
+Eksperimen full dataset jauh lebih lama dan tidak menjadi default.
 
 Untuk YOLOv5, script otomatis membuat `experiments/runtime/data_absolute.yaml` agar path dataset tetap benar walaupun `train.py` berjalan dari dalam folder `external/yolov5`. Jangan menjalankan `external/yolov5/train.py` langsung, karena path dataset relatif dapat terbaca dari folder YOLOv5 dan menghasilkan error `Dataset not found`.
 
-Untuk percobaan cepat sebelum eksperimen penuh, buat subset seimbang lokal dengan `python scripts/experiment/create_quick_subset.py`. Metrik dari subset cepat hanya untuk validasi alur sistem; jangan gunakan sebagai hasil akhir penelitian.
+Subset training dibuat dengan `python scripts/experiment/create_quick_subset.py`. Karena kelas `qr_code` jauh lebih kecil daripada kelas lain, script mengambil minimal 100 train per kelas lalu menambahkan data ekstra secara round-robin dari kelas yang tersedia sampai total train sekitar 800 gambar. Jelaskan di laporan bahwa eksperimen default memakai subset lokal menengah, bukan seluruh dataset.
 
 ## 7. Privacy Pipeline CLI
 
@@ -195,7 +216,7 @@ python scripts/run_privacy_pipeline.py `
   --input path\to\document.pdf `
   --output artifacts\scan-001 `
   --model yolo26 `
-  --weights experiments\runs\yolo26\yolo26n_seed42\weights\best.pt
+  --weights experiments\runs\yolo26\yolo26n_privacy_shield_5class_medium_seed42\weights\best.pt
 ```
 
 Tambahkan `--yolov5-repo external\yolov5` untuk backend YOLOv5. Jangan menjalankan pipeline dengan weight yang bukan hasil training lima kelas dataset ini.
@@ -211,14 +232,14 @@ streamlit run streamlit_app.py
 Buka `http://localhost:8501`. Aplikasi menyediakan:
 
 1. Upload PDF, JPG, atau PNG.
-2. Selector YOLOv5/YOLO26 dan path `best.pt`.
-3. Preview redacted page.
-4. Sanitized profile dan privacy report.
-5. Download redacted PDF, JSON, atau ZIP output.
+2. Auto-discovery `best.pt` terbaru untuk YOLOv5 dan YOLO26 dari `experiments/runs`.
+3. Scan otomatis dengan YOLOv5 dan YOLO26 pada dokumen yang sama.
+4. Ringkasan perbandingan jumlah deteksi, deteksi visual, deteksi `face_photo`, risk level, dan waktu proses.
+5. Preview redacted page, sanitized profile, privacy report, dan download artefak untuk masing-masing backend.
 6. Tab evaluasi model jika `experiments/reports/comparison.csv` sudah dibuat.
 7. Penjelasan arti setiap output dan batasan metrik.
 
-Jika weight belum ada, aplikasi akan memblokir scan dengan pesan jelas. Jika Tesseract belum terinstal, OCR akan gagal dengan pesan instalasi; dokumen mentah tidak dikirim ke layanan lain sebagai fallback.
+Jika weight salah satu backend belum ada, aplikasi akan memblokir scan dengan pesan jelas. Jika Tesseract belum terinstal, OCR akan gagal dengan pesan instalasi; dokumen mentah tidak dikirim ke layanan lain sebagai fallback. Foto profil disensor sebagai `face_photo`; jika model YOLO belum mendeteksi wajah, aplikasi memakai fallback lokal OpenCV untuk tetap memblokir wajah yang terlihat.
 
 ## 9. Kontrak Output
 

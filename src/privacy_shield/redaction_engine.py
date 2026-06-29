@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, JpegImagePlugin  # noqa: F401
 
 from privacy_shield.schemas import Detection
 
