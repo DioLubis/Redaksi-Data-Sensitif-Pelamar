@@ -10,7 +10,7 @@ from privacy_shield.box_merger import merge_boxes
 from privacy_shield.file_validator import validate_file
 from privacy_shield.pdf_to_image import document_to_images
 from privacy_shield.pii_text_detector import detect_pii
-from privacy_shield.pipeline import assert_gemini_safe, run_privacy_pipeline
+from privacy_shield.pipeline import assert_gemini_safe, filter_visual_false_positives, run_privacy_pipeline
 from privacy_shield.privacy_report_generator import build_privacy_report
 from privacy_shield.redaction_engine import apply_redactions
 from privacy_shield.sanitized_profile_builder import build_sanitized_profile
@@ -49,6 +49,40 @@ def test_pii_detection_handles_email_split_by_ocr() -> None:
     ocr = PageOCR(1, [token("demo.user@example.", 10, 10, 1), token("invalid", 65, 10, 1)])
     detections = detect_pii(ocr)
     assert [item.category for item in detections] == ["email"]
+
+
+def test_pii_detection_does_not_block_plain_city_text() -> None:
+    ocr = PageOCR(1, [token("Kota", 10, 10, 1), token("Tujuan", 65, 10, 1), token("Pendidikan", 130, 10, 1)])
+    assert detect_pii(ocr) == []
+
+
+def test_email_detection_uses_matching_token_box_not_full_line() -> None:
+    ocr = PageOCR(1, [token("Email", 10, 10, 1), token("user@example.test", 80, 10, 1), token("Portfolio", 190, 10, 1)])
+    detections = detect_pii(ocr)
+    assert [item.category for item in detections] == ["email"]
+    assert detections[0].box.x1 >= 80
+    assert detections[0].box.x2 <= 140
+
+
+def test_pii_detection_blocks_phone_github_and_address() -> None:
+    ocr = PageOCR(1, [
+        token("Phone", 10, 10, 1), token("081234567890", 80, 10, 1),
+        token("GitHub:", 10, 40, 2), token("github.com/demo-user", 80, 40, 2),
+        token("Alamat", 10, 70, 3), token("Denpasar", 80, 70, 3), token("Bali", 150, 70, 3),
+    ])
+    detections = detect_pii(ocr)
+    assert [item.category for item in detections] == ["phone_number", "github_profile", "address"]
+
+
+def test_github_skill_word_is_not_blocked() -> None:
+    ocr = PageOCR(1, [token("Git", 10, 10, 1), token("GitHub", 70, 10, 1), token("GitLab", 140, 10, 1)])
+    assert detect_pii(ocr) == []
+
+
+def test_face_fallback_is_removed_when_it_overlaps_text_dense_area() -> None:
+    detection = Detection(1, "face_photo", "opencv_face_fallback", 0.5, Box(0, 0, 240, 100))
+    ocr = PageOCR(1, [token("React", 10, 10, 1), token("GitHub", 70, 10, 1), token("Laravel", 130, 10, 1)])
+    assert filter_visual_false_positives([detection], ocr) == []
 
 
 def test_box_merger_applies_margin_and_merges_overlap() -> None:

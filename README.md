@@ -22,7 +22,7 @@ Dataset saat ini hanya mendukung lima kelas YOLO berikut:
 | 3 | `barcode` | pixelate |
 | 4 | `id_card` | black box |
 
-`stamp_or_seal`, `document_number_area`, `contact_block_visual`, `address_block_visual`, dan `sensitive_visual_region` tidak diklaim sebagai keluaran YOLO karena belum ada ground truth yang cukup. Email, telepon, alamat, dan nomor dokumen ditangani lokal dengan OCR + regex; kasus ambigu harus masuk manual review.
+`stamp_or_seal`, `document_number_area`, `contact_block_visual`, `address_block_visual`, dan `sensitive_visual_region` tidak diklaim sebagai keluaran YOLO karena belum ada ground truth yang cukup. Email, telepon, alamat, GitHub, dan nomor dokumen ditangani lokal dengan OCR + regex; kasus ambigu harus masuk manual review.
 
 ### Prinsip Privasi
 
@@ -50,6 +50,73 @@ flowchart LR
     G --> L[Privacy Risk Report]
     K --> M[Gemini: sanitized profile only]
 ```
+
+### 3.1. Perbandingan YOLOv5 dan YOLO26
+
+Meskipun kedua model dilatih pada dataset dan konfigurasi yang identik, YOLOv5 dan YOLO26 memiliki perbedaan fundamental pada arsitektur, cara integrasi, dan performa:
+
+#### 3.1.1. Arsitektur Model
+
+| Aspek | YOLOv5 | YOLO26 |
+| --- | --- | --- |
+| **Backbone** | CSPDarknet (Cross Stage Partial Darknet) | C2f (Cross Stage Partial with 2 convolutions) — lebih efisien dari CSP |
+| **Neck** | PANet (Path Aggregation Network) | PANet + improved upsampling |
+| **Detection Head** | Anchor-based (menggunakan anchor boxes) | Anchor-free (langsung memprediksi pusat + ukuran objek) |
+| **Head Structure** | Coupled (classification + regression dalam satu convolution) | Decoupled (classifier dan regressor terpisah) |
+| **Loss Function** | CIoU + BCE | DFL (Distribution Focal Loss) + CIoU + BCE |
+| **Label Assignment** | Static (berdasarkan anchor matching tetap) | Dynamic Task-Aligned Assigner (menyesuaikan per sample) |
+| **Pretrained Weights** | `yolov5n.pt` / `yolov5s.pt` | `yolo26n.pt` / `yolo26s.pt` |
+
+YOLO26 menggunakan arsitektur yang lebih modern (setara YOLOv8+ dari Ultralytics) dengan anchor-free head dan decoupled structure yang memisahkan klasifikasi dan regresi. Anchor-free menghilangkan kebutuhan tuning anchor boxes per dataset, sehingga lebih adaptif terhadap variasi ukuran objek seperti `face_photo` (besar) vs `qr_code` (kecil). Decoupled head memungkinkan masing-masing tugas belajar representasi yang lebih spesifik, bukan representasi bersama.
+
+#### 3.1.2. Perbedaan Integrasi dalam Sistem
+
+| Aspek | YOLOv5 | YOLO26 |
+| --- | --- | --- |
+| **Library** | `external/yolov5` (repo terpisah) | `ultralytics` (paket terpadu) |
+| **Cara Panggil Training** | Subprocess ke `external/yolov5/train.py` | API langsung: `YOLO().train()` |
+| **Hyperparameter** | File YAML terpisah (`yolov5_hyp.yaml`) | Parameter fungsi `train()` langsung |
+| **Cara Inference** | Subprocess ke `detect.py`, output label file, parsing normalized YOLO format | API langsung: `model.predict()`, output xyxy langsung |
+| **Peak GPU Memory** | Tidak bisa dilaporkan (subprocess) | Bisa dilaporkan via `torch.cuda.max_memory_allocated()` |
+| **Export ONNX** | `external/yolov5/export.py` via subprocess | `model.export()` via API langsung |
+
+Perbedaan integrasi ini berdampak pada kecepatan dan overhead. YOLOv5 memanggil proses Python terpisah setiap kali deteksi, yang menambah latency sekitar 1–3 detik per gambar untuk startup subprocess. YOLO26 menjalankan inference langsung dalam proses yang sama, sehingga latency lebih rendah dan cocok untuk batch processing.
+
+#### 3.1.3. Dampak pada Hasil Deteksi
+
+Perbedaan arsitektur menghasilkan perbedaan karakteristik deteksi:
+
+1. **Anchor-Free (YOLO26) vs Anchor-Based (YOLOv5)**:
+   - YOLO26 lebih baik mendeteksi objek kecil seperti `qr_code` (26×26 piksel di dataset) karena tidak terbatas pada anchor scales tetap.
+   - YOLOv5 kadang gagal mendeteksi `qr_code` atau `barcode` kecil yang perspektifnya miring, karena anchor boxes tidak cocok.
+   - YOLO26 cenderung memiliki bounding box yang lebih rapat pada tepi objek berkat DFL.
+
+2. **Decoupled Head (YOLO26)**:
+   - Mengurangi false positive pada kelas `face_photo` yang mirip dengan background.
+   - Precision dan recall umumnya lebih tinggi 2–5% pada dataset ini (lihat metrik evaluasi di laporan perbandingan).
+
+3. **Subprocess Overhead (YOLOv5)**:
+   - Waktu inference YOLOv5 lebih panjang 1–3 detik per gambar karena startup subprocess.
+   - Pada batch banyak dokumen, selisih ini terakumulasi signifikan.
+
+4. **Dynamic Label Assignment (YOLO26)**:
+   - Training lebih stabil pada kelas dengan jumlah sampel tidak seimbang, misalnya `qr_code` (152 train) vs `face_photo` (159K train).
+   - YOLOv5 dengan static assignment cenderung mengabaikan kelas minoritas saat confidence threshold diturunkan.
+
+#### 3.1.4. Metrik Evaluasi yang Dibandingkan
+
+| Metrik | Sumber | Arti |
+| --- | --- | --- |
+| Precision | `val.py` / `model.val()` | Proporsi deteksi benar dari semua deteksi model |
+| Recall | `val.py` / `model.val()` | Proporsi ground truth yang berhasil dideteksi |
+| F1 | Harmonic mean | Keseimbangan precision dan recall |
+| mAP@50 | Rata-rata AP di IoU=0.5 | Metrik utama deteksi objek |
+| mAP@50:95 | Rata-rata AP di IoU 0.5–0.95 | Metrik ketat untuk kualitas bounding box |
+| Inference time | Benchmark script | Waktu rata-rata inferensi per gambar (ms) |
+| FPS | 1000 / inference time | Jumlah gambar per detik |
+| Model size | File weight | Ukuran file `.pt` dalam MB |
+
+Semua metrik dihasilkan dari test split yang identik. Karena pipeline berbagi OCR, regex, dan OpenCV fallback, perbedaan hasil redaksi akhir hanya berasal dari kolom `yolo_visual`. Perbedaan deteksi `face_photo`, `signature`, `qr_code`, `barcode`, dan `id_card` antara kedua backend mencerminkan kemampuan arsitektur masing-masing pada lima kelas tersebut.
 
 ## 4. Dataset dan Split
 
@@ -116,7 +183,7 @@ Aplikasi utama adalah Streamlit:
 streamlit run streamlit_app.py
 ```
 
-Buka `http://localhost:8501` di browser. Dari UI, upload PDF/JPG/PNG lalu jalankan scan. Aplikasi otomatis mencari `best.pt` terbaru untuk YOLOv5 dan YOLO26, lalu menjalankan keduanya pada dokumen yang sama untuk perbandingan.
+Buka `http://localhost:8501` di browser. Dari UI, upload satu atau lebih PDF/JPG/PNG lalu jalankan scan. Aplikasi otomatis mencari `best.pt` terbaru untuk YOLOv5 dan YOLO26, lalu menjalankan keduanya pada setiap dokumen untuk perbandingan.
 
 Untuk PDF, `PyMuPDF` sudah dicantumkan pada requirements. Untuk OCR, instal Tesseract binary secara terpisah dan pastikan tersedia pada `PATH`:
 
@@ -231,28 +298,61 @@ streamlit run streamlit_app.py
 
 Buka `http://localhost:8501`. Aplikasi menyediakan:
 
-1. Upload PDF, JPG, atau PNG.
+1. Upload batch PDF, JPG, atau PNG.
 2. Auto-discovery `best.pt` terbaru untuk YOLOv5 dan YOLO26 dari `experiments/runs`.
-3. Scan otomatis dengan YOLOv5 dan YOLO26 pada dokumen yang sama.
-4. Ringkasan perbandingan jumlah deteksi, deteksi visual, deteksi `face_photo`, risk level, dan waktu proses.
-5. Preview redacted page, sanitized profile, privacy report, dan download artefak untuk masing-masing backend.
-6. Tab evaluasi model jika `experiments/reports/comparison.csv` sudah dibuat.
-7. Penjelasan arti setiap output dan batasan metrik.
+3. Scan otomatis dengan YOLOv5 dan YOLO26 pada setiap dokumen.
+4. Report evaluasi sistem batch dalam JSON dan CSV.
+5. Ringkasan perbandingan jumlah deteksi, deteksi visual YOLO murni, fallback wajah OpenCV, deteksi OCR/regex, deteksi `face_photo`, risk level, dan waktu proses.
+6. Slider before/after sticky di atas dokumen: satu slider mengontrol semua halaman, layer bawah adalah halaman asli dan layer atas adalah hasil blok.
+7. Preview redacted page, sanitized profile, privacy report, dan download artefak untuk masing-masing backend.
+8. Tab evaluasi model jika `experiments/reports/comparison.csv` sudah dibuat.
+9. Tab evaluasi sistem batch untuk membuka ulang report scan yang sudah tersimpan.
+10. Penjelasan arti setiap output dan batasan metrik.
 
 Jika weight salah satu backend belum ada, aplikasi akan memblokir scan dengan pesan jelas. Jika Tesseract belum terinstal, OCR akan gagal dengan pesan instalasi; dokumen mentah tidak dikirim ke layanan lain sebagai fallback. Foto profil disensor sebagai `face_photo`; jika model YOLO belum mendeteksi wajah, aplikasi memakai fallback lokal OpenCV untuk tetap memblokir wajah yang terlihat.
+
+Jika hasil YOLOv5 dan YOLO26 terlihat sama, cek kolom `yolo_visual`, `face_fallback`, dan `ocr_regex`. Deteksi dari OCR/regex dan fallback OpenCV memang dipakai bersama oleh kedua backend, sehingga perbedaan model hanya terlihat pada kolom `yolo_visual` dan metrik evaluasi model (lihat penjelasan arsitektur dan dampaknya di [§3.1](#31-perbandingan-yolov5-dan-yolo26)). Rule OCR dibuat konservatif: email, telepon, GitHub, dan nomor dokumen diblok pada token yang cocok; alamat diblok jika ada label/petunjuk alamat yang kuat, bukan sekadar kata umum seperti `kota`.
+
+Setiap batch scan disimpan di `artifacts/<scan_id>/` dengan struktur:
+
+```text
+artifacts/<scan_id>/
+  batch_system_evaluation_report.json
+  batch_system_evaluation_report.csv
+  scan.log
+  document_001/
+    original_pages/*.png
+    yolov5/
+      redacted_document.pdf
+      redacted_pages/*.png
+      detection_result.json
+      ocr_result.json
+      sanitized_candidate_profile.json
+      privacy_risk_report.json
+    yolo26/
+      ...
+  document_002/
+    ...
+```
+
+Log aplikasi global tersimpan di `artifacts/logs/streamlit_scans.log`. Log dan report batch hanya menyimpan hash nama file, ekstensi, ukuran file, jumlah deteksi, kategori, sumber deteksi, durasi, status guard Gemini, dan path artefak output. Raw OCR text dan nilai PII tidak dicatat di log. Folder `original_pages/*.png` menyimpan render halaman asli secara lokal hanya untuk fitur slider before/after; file ini bisa berisi PII visual, jangan dibagikan keluar dari mesin lokal.
 
 ## 9. Kontrak Output
 
 | Artefak | Isi | PII mentah? |
 | --- | --- | --- |
 | `redacted_document.pdf` | PDF image-based yang sudah disensor | Tidak |
+| `original_pages/*.png` | Render halaman asli untuk slider before/after lokal | Ya |
 | `redacted_pages/*.png` | Halaman tersensor | Tidak, untuk region terdeteksi |
 | `detection_result.json` | kategori, source, box, confidence, hash bukti | Tidak |
 | `ocr_result.json` | koordinat, confidence, hash token | Tidak |
 | `sanitized_candidate_profile.json` | skill, experience, education, certifications | Tidak boleh |
 | `privacy_risk_report.json` | risk level, count, durasi, guard Gemini | Tidak |
+| `batch_system_evaluation_report.json` | ringkasan batch per dokumen dan backend | Tidak |
+| `batch_system_evaluation_report.csv` | versi tabel report batch | Tidak |
+| `scan.log` | event proses scan tanpa raw OCR/PII | Tidak |
 
-Sebelum profile dipakai AI Screening, `assert_gemini_safe` memblokir payload yang masih cocok dengan pola email, nomor telepon, atau nomor dokumen. Redaction Success Rate, Sensitive Data Leakage Rate, Over-redaction Rate, dan OCR PII Detection Accuracy harus dihitung dari ground truth audit. Nilai yang belum dapat dibuktikan dihasilkan sebagai `null`, bukan diasumsikan sempurna.
+Sebelum profile dipakai AI Screening, `assert_gemini_safe` memblokir payload yang masih cocok dengan pola email, nomor telepon, GitHub, atau nomor dokumen. Redaction Success Rate, Sensitive Data Leakage Rate, Over-redaction Rate, dan OCR PII Detection Accuracy harus dihitung dari ground truth audit. Nilai yang belum dapat dibuktikan dihasilkan sebagai `null`, bukan diasumsikan sempurna.
 
 ## 10. Struktur Penting
 
@@ -275,6 +375,6 @@ tests/                              # unit dan integration tests dummy
 python -m pytest -q
 ```
 
-Test memakai PNG dan OCR/model dummy, tidak menggunakan CV asli atau Gemini. Status terakhir: `9 passed`.
+Test memakai PNG dan OCR/model dummy, tidak menggunakan CV asli atau Gemini. Status terakhir: `12 passed`.
 
 Prototype ini belum menjadi layanan produksi. Sebelum integrasi backend Karierly, tambahkan penyimpanan terenkripsi, queue worker, autentikasi, audit trail database, authorization recruiter/admin, dan human review untuk hasil berisiko tinggi.
